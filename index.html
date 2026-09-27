@@ -1832,9 +1832,17 @@ select:focus{
             <input id="phoneInput" type="tel" inputmode="numeric" maxlength="10" placeholder="Enter 10-digit mobile" autocomplete="off" required>
           </div>
         </div>
-        <!-- Password is kept internal and is never displayed to the user. -->
-        <input id="passwordInput" type="hidden" value="Sanju2005">
-        <button class="login-btn" type="submit" id="loginBtn" style="display:none">🔑 &nbsp; LOGIN &amp; LOAD &nbsp; →</button>
+        <div class="form-group">
+          <label class="label" for="passwordInput">🔒 PASSWORD</label>
+          <div class="input-wrap">
+            <div class="input-icon">🔑</div>
+            <input id="passwordInput" type="password" placeholder="Enter your password"
+                   autocomplete="current-password" required>
+            <button type="button" class="password-toggle" id="passwordToggle"
+                    aria-label="Show password" title="Show password">👁</button>
+          </div>
+        </div>
+        <button class="login-btn" type="submit" id="loginBtn">🔑 &nbsp; LOGIN &amp; LOAD &nbsp; →</button>
         <button type="button" class="autopaste-btn" id="autopasteBtn">📋 AUTOPASTE</button>
         <button type="button" class="jwt-toggle-btn" id="jwtToggleBtn">🔐 JWT TOKEN LOGIN</button>
 
@@ -2899,12 +2907,11 @@ select:focus{
   // ─── LOGIN ────────────────────────────────────────────────────────────────
   async function login(phone,password){
     if(!selectedServer || !AUTO_LOGIN_SERVERS[selectedServer]){
-      showToast('Please select SERVER 1 or SERVER 2 before login.','warning');
+      alert('Please select SERVER 1 or SERVER 2 before login.');
       const sel=document.getElementById('serverSelect');
       if(sel) sel.focus();
       return false;
     }
-
     const visitor=Math.random().toString(36).substring(2,15)+Math.random().toString(36).substring(2,15);
     const device_id=Math.random().toString(36).substring(2,15)+Math.random().toString(36).substring(2,15);
     const payload={
@@ -2912,39 +2919,37 @@ select:focus{
       channel:'h5', channelId:'Samsung', lang:'en_US', platform:'h5',
       packageId:2, packageInfo:'com.resulta.checka', versionCode:'999',
       deviceBrand:'Android', deviceModel:'Unknown', visitor, reqDate:Date.now(),
-      ua:navigator.userAgent || 'Mozilla/5.0'
+      ua:'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36'
     };
-
     try{
-      // IMPORTANT: use the selected server's Supabase Edge Function.
-      // The previous version ignored the selected server and called the
-      // upstream login endpoint directly, which made number login fail.
-      const d=await autoLoginAPI('login',payload);
-
-      let token=null;
-      const td=d?.data;
-      if(typeof td==='string' && td.startsWith('eyJ')) token=td;
-      else if(td && typeof td==='object') token=td.accessToken||td.access_token||td.token||td.jwt;
-      if(!token) token=d?.accessToken||d?.access_token||d?.token||d?.jwt;
-
-      if(token){
-        S.token=token;
-        S.isLoggedIn=true;
-        S.phone=phone;
-        S.visitor=visitor;
-        S.authMode='normal';
-        saveSession();
-        updateServerBadges();
-        await updateNumberDisplay();
-        return true;
+      const r=await fetch('https://api.bh2255.xyz/app/password/login',{
+        method:'POST',
+        headers:{'Accept':'application/json, text/plain, */*','Content-Type':'application/json','Origin':'https://playbhau.com','Referer':'https://playbhau.com/','User-Agent':'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36'},
+        body:JSON.stringify(payload)
+      });
+      if(r.status!==200){
+        const msgs={401:'Login failed: Unauthorized',403:'Access denied. Account may be banned.',404:'Login service unavailable'};
+        showToast(msgs[r.status]||`Server error (${r.status})`,'error');
+        return false;
       }
-
-      showToast(d?.msg||d?.message||d?.error||'Login failed: no login token returned.','error');
+      const d=await r.json();
+      if(d.success && d.code===0){
+        let token=null;
+        const td=d.data;
+        if(typeof td==='string' && td.startsWith('eyJ')) token=td;
+        else if(typeof td==='object' && td!==null) token=td.accessToken||td.token;
+        else token=d.accessToken||d.token;
+        if(token){
+          S.token=token; S.isLoggedIn=true; S.phone=phone; S.visitor=visitor; S.authMode='normal';
+          saveSession();
+          updateServerBadges();
+          await updateNumberDisplay();
+          return true;
+        }
+      }
+      showToast(d.msg||d.message||'Login failed. Please try again.','error');
       return false;
-    }catch(e){
-      showToast(e?.message ? 'Login failed: '+e.message : 'Login failed. Please try again.','error');
-      return false;
-    }
+    }catch(e){ showToast('Network error: '+e.message,'error'); return false; }
   }
 
   // ─── LIVE BALANCE SYNC ───────────────────────────────────────────────────
@@ -4547,60 +4552,13 @@ select:focus{
 
   async function renderReferral(){
     S.currentPanel='refer';
-    showPanel(`<div class="dynamic-card"><div class="title">👥 Referral <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
-      <div style="text-align:center;padding:20px;color:#6b7280;">Loading referral details...</div></div>`);
-
-    let shareData={};
-    let history=[];
-    try{ history=await getReferralHistory(1); }catch(_){ history=[]; }
-
-    // The share-info response shown in DevTools contains inviteRegisterLink.
-    // Accept a few common aliases so the UI still works if the API changes its key name.
-    try{
-      const r=await fetch('https://api.bh2255.xyz/app/share/getShareInfo',{
-        method:'GET',
-        headers:{
-          'Accept':'application/json, text/plain, */*',
-          'Token':S.token,
-          'Visitor':S.visitor,
-          'Origin':'https://playbhau.com',
-          'Referer':'https://playbhau.com/'
-        }
-      });
-      if(r.ok){
-        const d=await r.json();
-        if(d && d.code===0) shareData=d.data||{};
-      }
-    }catch(_){ shareData={}; }
-
-    const currentCode=String(
-      shareData.inviteRegisterLink ||
-      shareData.inviteCode ||
-      shareData.referCode ||
-      shareData.referralCode ||
-      ''
-    ).trim();
-
-    const shareUrl=String(shareData.shareUrl || shareData.inviteUrl || '').trim();
-    const shareText=String(shareData.shareText || shareData.inviteRegisterText || '').trim();
-
-    let html=`<div class="dynamic-card">
-      <div class="title">👥 Referral & Invite Code <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
-
-      <div style="padding:12px;border-radius:18px;background:linear-gradient(135deg,rgba(139,92,246,.09),rgba(251,191,36,.05));border:1px solid rgba(139,92,246,.16);margin-bottom:12px;">
-        <div style="color:#a5b4fc;font-size:11px;font-weight:800;margin-bottom:7px;letter-spacing:.4px;">🔑 YOUR REFER CODE</div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input id="inviteCodeInput" value="${currentCode.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}" maxlength="32" autocomplete="off" spellcheck="false"
-            style="flex:1;min-width:0;height:46px;padding:0 13px;border-radius:14px;background:rgba(8,12,26,.75);border:1px solid rgba(255,255,255,.07);color:#f1f5f9;outline:none;font-size:15px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;">
-          <button id="updateInviteCodeBtn" class="btn-sm btn-refer" style="height:46px;padding:0 15px;white-space:nowrap;">💾 UPDATE</button>
-        </div>
-        <div id="inviteCodeStatus" style="min-height:16px;margin-top:7px;color:#6b7280;font-size:10px;text-align:center;">${currentCode?'Current code loaded from share info.':'Enter a referral code and update it.'}</div>
-      </div>
-
-      <div style="border-top:1px solid rgba(255,255,255,.03);padding-top:10px;">
-        <div style="color:#6b7280;font-size:10px;font-weight:600;margin-bottom:6px;">📋 Referral History</div>
-        <div style="max-height:350px;overflow-y:auto;">`;
-
+    showPanel(`<div class="dynamic-card"><div class="title">👥 Referral History <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
+      <div style="text-align:center;padding:20px;color:#6b7280;">Loading...</div></div>`);
+    const history=await getReferralHistory(1);
+    let html=`<div class="dynamic-card"><div class="title">👥 Referral History <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
+      <div style="border-top:1px solid rgba(255,255,255,0.02);padding-top:10px;">
+      <div style="color:#6b7280;font-size:10px;font-weight:600;margin-bottom:6px;">📋 Referral History</div>
+      <div style="max-height:350px;overflow-y:auto;">`;
     if(history && history.length){
       const display=history.slice(0,3);
       for(const ref of display){
@@ -4608,121 +4566,15 @@ select:focus{
         html+=`<div class="refer-user-item"><div><span class="user-phone">📱 ${ref.inviteUserPhone||'Unknown'}</span><span class="user-time"> · ${ts}</span></div><div><span class="user-status">${ref.status===1?'✅ Active':'⏳ Pending'}</span></div></div>`;
       }
     }else html+=`<div style="color:#6b7280;font-size:12px;text-align:center;padding:20px;">No referral history yet</div>`;
-
     html+=`</div></div>
-      <div style="margin-top:12px;display:flex;gap:8px;">
-        <button class="btn-sm btn-refer btn-block" id="shareReferralBtn">📤 GET SHARE LINK</button>
-      </div>
-      <div id="shareResult" class="mt-10"></div>
-      </div>`;
-
+      <div style="margin-top:12px;display:flex;gap:8px;"><button class="btn-sm btn-refer btn-block" id="shareReferralBtn">📤 Share Referral Link</button></div>
+      <div id="shareResult" class="mt-10"></div></div>`;
     showPanel(html);
-
-    const input=document.getElementById('inviteCodeInput');
-    const updateBtn=document.getElementById('updateInviteCodeBtn');
-    const status=document.getElementById('inviteCodeStatus');
-
-    updateBtn?.addEventListener('click',async function(){
-      const inviteCode=(input?.value||'').trim().toUpperCase();
-      if(!inviteCode){
-        status.textContent='❌ Enter a referral code first.';
-        status.style.color='#fb7185';
-        return;
-      }
-      if(!/^[A-Z0-9_-]{2,32}$/.test(inviteCode)){
-        status.textContent='❌ Invalid referral code format.';
-        status.style.color='#fb7185';
-        return;
-      }
-
-      updateBtn.disabled=true;
-      updateBtn.textContent='⏳ UPDATING...';
-      status.textContent='Updating referral code...';
-      status.style.color='#fbbf24';
-
+    document.getElementById('shareReferralBtn').addEventListener('click',async function(){
       try{
-        const payload={
-          channel:'h5',
-          channelId:'bhau',
-          lang:'en_US',
-          packageId:2,
-          pageInfo:'com.resulta.checka',
-          reqDate:new Date().toISOString().replace(/[-:TZ.]/g,'').slice(0,14),
-          ua:navigator.userAgent,
-          version:'5.0.0',
-          visitor:S.visitor,
-          inviteCode:inviteCode
-        };
-
-        const r=await fetch('https://playbhau.com/api/app/user/update/inviteCode',{
-          method:'POST',
-          headers:{
-            'Accept':'application/json, text/plain, */*',
-            'Content-Type':'application/json',
-            'Token':S.token,
-            'Visitor':S.visitor,
-            'Origin':'https://playbhau.com',
-            'Referer':'https://playbhau.com/'
-          },
-          body:JSON.stringify(payload)
-        });
-
-        const d=await r.json().catch(()=>({}));
-        if(r.ok && (d.code===0 || d.success===true)){
-          status.textContent='✅ Referral code updated successfully.';
-          status.style.color='#34d399';
-          input.value=inviteCode;
-          shareData.inviteRegisterLink=inviteCode;
-          showToast('Referral code updated','success');
-        }else{
-          const msg=d?.msg || d?.message || `Request failed (${r.status})`;
-          status.textContent=`❌ ${msg}`;
-          status.style.color='#fb7185';
-          showToast(msg,'error');
-        }
-      }catch(err){
-        status.textContent='❌ Unable to update referral code.';
-        status.style.color='#fb7185';
-        showToast('Referral update failed','error');
-      }finally{
-        updateBtn.disabled=false;
-        updateBtn.textContent='💾 UPDATE';
-      }
-    });
-
-    document.getElementById('shareReferralBtn')?.addEventListener('click',async function(){
-      try{
-        const r=await fetch('https://api.bh2255.xyz/app/share/getShareInfo',{
-          method:'GET',
-          headers:{
-            'Accept':'application/json, text/plain, */*',
-            'Token':S.token,
-            'Visitor':S.visitor,
-            'Origin':'https://playbhau.com',
-            'Referer':'https://playbhau.com/'
-          }
-        });
-        if(!r.ok) throw new Error('Share info request failed');
-        const d=await r.json();
-        if(d.code!==0) throw new Error(d.msg||'Share info unavailable');
-        const sd=d.data||{};
-        const url=sd.shareUrl || sd.inviteUrl || 'https://playbhau.com/';
-        const txt=sd.shareText || sd.inviteRegisterText || 'Join Bhau Lottery and win big! 🎰';
-        const div=document.getElementById('shareResult');
-        if(div) div.innerHTML=`<div style="background:rgba(0,0,0,.2);padding:10px;border-radius:16px;">
-          <div style="color:#34d399;font-weight:600;">✅ Share link ready!</div>
-          <div style="font-size:11px;color:#6b7280;word-break:break-all;margin:6px 0;">🔗 ${String(url).replace(/</g,'&lt;')}</div>
-          <div style="display:flex;gap:6px;margin-top:4px;">
-            <button class="btn-sm btn-primary" id="copyReferralLinkBtn" style="padding:6px 14px;font-size:11px;">📋 Copy Link</button>
-            <button class="btn-sm btn-warning" id="openReferralLinkBtn" style="padding:6px 14px;font-size:11px;">🌐 Open</button>
-          </div>
-          ${txt?`<div style="font-size:10px;color:#6b7280;margin-top:4px;">📝 ${String(txt).replace(/</g,'&lt;')}</div>`:''}
-        </div>`;
-        document.getElementById('copyReferralLinkBtn')?.addEventListener('click',()=>navigator.clipboard.writeText(url));
-        document.getElementById('openReferralLinkBtn')?.addEventListener('click',()=>window.open(url,'_blank','noopener,noreferrer'));
-      }catch(err){
-        showToast(err?.message||'Unable to load share link','error');
-      }
+        const r=await fetch('https://api.bh2255.xyz/app/share/getShareInfo',{method:'GET',headers:{'Accept':'application/json, text/plain, */*','Token':S.token,'Visitor':S.visitor,'Origin':'https://playbhau.com','Referer':'https://playbhau.com/'}});
+        if(r.status===200){ const d=await r.json(); if(d.code===0){ const sd=d.data||{}; const url=sd.shareUrl||'https://playbhau.com/'; const txt=sd.shareText||'Join Bhau Lottery and win big! 🎰'; const div=document.getElementById('shareResult'); div.innerHTML=`<div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:16px;"><div style="color:#34d399;font-weight:600;">✅ Share link ready!</div><div style="font-size:11px;color:#6b7280;word-break:break-all;margin:6px 0;">🔗 ${url}</div><div style="display:flex;gap:6px;margin-top:4px;"><button class="btn-sm btn-primary" onclick="navigator.clipboard.writeText('${url}')" style="padding:6px 14px;font-size:11px;">📋 Copy Link</button><button class="btn-sm btn-warning" onclick="window.open('${url}','_blank')" style="padding:6px 14px;font-size:11px;">🌐 Open</button></div>${txt?`<div style="font-size:10px;color:#6b7280;margin-top:4px;">📝 ${txt}</div>`:''}</div>`; } }
+      }catch(_){}
     });
   }
 
@@ -4757,8 +4609,9 @@ select:focus{
     if(loginSection.classList.contains('jwt-mode')) return;
     if(loginInProgress) return;
     const phone=phoneInput.value.trim();
-    const pass='Sanju2005';
+    const pass=document.getElementById('passwordInput').value;
     if(!/^[6-9]\d{9}$/.test(phone)){ showToast('Enter valid 10-digit phone number.','warning'); return; }
+    if(!pass){ showToast('Enter your password.','warning'); document.getElementById('passwordInput').focus(); return; }
     loginInProgress=true;
     loginBtn.disabled=true; loginBtn.textContent='⏳ Logging...';
     const ok=await login(phone,pass);
@@ -4959,12 +4812,6 @@ select:focus{
   });
 
   // ─── SERVER SELECTOR / AUTO UPDATE ─────────────────────────────────────
-  // Restore the user's last server selection before any number-login attempt.
-  try{
-    const savedServer=localStorage.getItem('bhau_selected_server')||'';
-    if(savedServer && AUTO_LOGIN_SERVERS[savedServer]) selectedServer=savedServer;
-  }catch(_){}
-
   const serverSelect=document.getElementById('serverSelect');
   if(serverSelect){
     serverSelect.value=selectedServer;
@@ -4994,13 +4841,18 @@ select:focus{
 
   // ─── LOGIN INPUT ─────────────────────────────────────────────────────
   document.getElementById('loginForm').addEventListener('submit',handleLogin);
-  let autoLoginStarted=false;
+
+  const passwordToggle=document.getElementById('passwordToggle');
+  passwordToggle?.addEventListener('click',()=>{
+    const field=document.getElementById('passwordInput');
+    const showing=field.type==='text';
+    field.type=showing?'password':'text';
+    passwordToggle.textContent=showing?'👁':'🙈';
+    passwordToggle.setAttribute('aria-label',showing?'Show password':'Hide password');
+    passwordToggle.title=showing?'Show password':'Hide password';
+  });
   phoneInput.addEventListener('input',function(){
     this.value=this.value.replace(/\D/g,'').slice(0,10);
-    if(this.value.length===10 && !autoLoginStarted && !loginInProgress){
-      autoLoginStarted=true;
-      handleLogin({preventDefault(){}}).finally(()=>{ autoLoginStarted=false; });
-    }
   });
 
   // ─── BACK BUTTON GUARD ──────────────────────────────────────────────
