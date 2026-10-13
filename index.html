@@ -3592,6 +3592,8 @@ select:focus{
         <input type="number" id="withdrawAmountInput" placeholder="Enter amount to withdraw" min="0" step="1" style="width:100%;padding:10px 14px;background:rgba(8,12,26,0.6);border:1px solid rgba(255,255,255,0.02);border-radius:16px;color:#e2e8f0;font-size:14px;outline:none;box-shadow:inset 0 2px 8px rgba(0,0,0,0.1);">
       </div>
       <button class="btn-sm btn-withdraw btn-block" id="withdrawSubmitBtn" ${!S.withdrawCards||!S.withdrawCards.length?'disabled':''}>💸 Withdraw Now</button>
+      <button type="button" class="btn-sm btn-block" id="loadRealWithdrawalsBtn" style="margin-top:8px;background:rgba(139,92,246,.12);border:1px solid rgba(167,139,250,.35);color:#c4b5fd;">📋 View Real Withdrawal History</button>
+      <div id="realWithdrawalsResult" class="mt-10"></div>
       <div id="withdrawResult" class="mt-10"></div></div>`);
 
     // Switch between a saved bank account and a manually entered Card ID.
@@ -3613,6 +3615,32 @@ select:focus{
     };
     bankModeBtn.addEventListener('click',()=>updateWithdrawMode('bank'));
     manualModeBtn.addEventListener('click',()=>updateWithdrawMode('manual'));
+
+    // Fetch and display actual withdrawal records returned by the authenticated API.
+    document.getElementById('loadRealWithdrawalsBtn').addEventListener('click',async function(){
+      const out=document.getElementById('realWithdrawalsResult');
+      out.innerHTML='<div style="text-align:center;color:#a5b4fc;padding:12px;">Loading real withdrawal records…</div>';
+      this.disabled=true;
+      try{
+        const r=await fetch('https://api.bh2266.xyz/app/pay/paid/log',{
+          method:'POST',
+          headers:{'Accept':'application/json, text/plain, */*','Content-Type':'application/json','Token':S.token,'Visitor':S.visitor,'PackageId':'2','Origin':'https://playbhau.com','Referer':'https://playbhau.com/'},
+          body:JSON.stringify({channel:'h5',channelId:'Samsung',lang:'en_US',visitor:S.visitor,packageId:2,packageInfo:'com.resulta.checka',reqDate:Date.now(),ua:navigator.userAgent||'Mozilla/5.0',versionCode:'999',pageNo:1,pageSize:20})
+        });
+        const d=await r.json();
+        if(!r.ok || d.code!==0) throw new Error(d.msg||d.message||`HTTP ${r.status}`);
+        const rows=Array.isArray(d.data)?d.data:[];
+        const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        if(!rows.length){out.innerHTML='<div style="text-align:center;color:#9ca3af;padding:14px;">No withdrawal records returned by the server.</div>';return;}
+        out.innerHTML='<div style="font-weight:800;color:#c4b5fd;margin:10px 0 6px;">Server Withdrawal Response ('+rows.length+')</div>'+rows.map(t=>{
+          const st=getWithdrawStatus(t.respCode); const amount=Number(t.paidAmount||0); const reward=Number(t.reward||0);
+          const dt=Number(t.createTime||t.updateTime||0); const date=dt?(dt<1e12?new Date(dt*1000):new Date(dt)).toLocaleString(): 'Date unavailable';
+          const statusColor=st.cls==='complete'?'#34d399':st.cls==='failed'?'#fb7185':'#fbbf24';
+          return `<div style="padding:10px;margin:7px 0;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(0,0,0,.16);"><div style="display:flex;justify-content:space-between;gap:8px;"><b style="color:#e5e7eb;">₹${amount.toFixed(2)}</b><b style="color:${statusColor};">${st.label}</b></div><div style="font-size:11px;color:#9ca3af;margin-top:5px;">${safe(t.bankName||'Withdrawal')} · Card ${safe(t.userCardNumber||'—')}</div><div style="font-size:10px;color:#6b7280;margin-top:4px;">Order: ${safe(t.orderNo||'—')} · ${safe(date)}</div><div style="font-size:10px;color:#9ca3af;margin-top:4px;">Reward: ₹${reward.toFixed(2)} · Fee: ₹${Math.max(0,amount-reward).toFixed(2)}</div></div>`;
+        }).join('');
+      }catch(e){out.innerHTML='<div style="color:#fb7185;padding:10px;">Could not load real withdrawal records: '+String(e.message||e).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))+'</div>';}
+      finally{this.disabled=false;}
+    });
 
     // If no card is available, the Add Bank Card button opens the existing
     // Bank Card panel directly.
