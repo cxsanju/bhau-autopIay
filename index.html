@@ -3583,9 +3583,14 @@ select:focus{
       });
       if(r.status===200){ const d=await r.json(); if(d.code===0){ S.withdrawCards=d.data||[]; S.cardList=S.withdrawCards; if(S.withdrawCards.length && S.selectedCard===null){ const id=parseInt(S.withdrawCards[0].id||S.withdrawCards[0].cardId); if(!isNaN(id)) S.selectedCard=id; } } }
     }catch(_){}
+    const hasBank=!!(S.withdrawCards && S.withdrawCards.length);
     let cardHtml='';
-    if(S.withdrawCards && S.withdrawCards.length){
-      cardHtml=`<div style="margin-bottom:8px;"><div style="color:#6b7280;font-size:10px;font-weight:600;margin-bottom:4px;">Select Card</div><div id="cardList">`;
+    if(hasBank){
+      cardHtml=`<div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button type="button" id="withdrawBankMode" class="btn-sm" style="flex:1;background:rgba(52,211,153,.12);border:1px solid #34d399;color:#6ee7b7;">🏦 Bank Account</button>
+        <button type="button" id="withdrawManualMode" class="btn-sm" style="flex:1;background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.4);color:#c4b5fd;">🆔 Manual Card ID</button>
+      </div>`;
+      cardHtml+=`<div id="withdrawBankPanel"><div style="margin-bottom:8px;"><div style="color:#6b7280;font-size:10px;font-weight:600;margin-bottom:4px;">Select Bank Account</div><div id="cardList">`;
       for(const c of S.withdrawCards){
         const id=parseInt(c.id||c.cardId||'?');
         const holder=c.accountName||c.holderName||c.name||'Unknown';
@@ -3594,11 +3599,14 @@ select:focus{
         const sel=(S.selectedCard!==null && id===S.selectedCard)?'selected':'';
         cardHtml+=`<div class="payment-method card-item ${sel}" data-id="${id}"><div><div class="pm-name">${bank} - ${holder}</div><div class="pm-desc">${acc?'****'+acc.slice(-4):''}</div></div></div>`;
       }
-      cardHtml+=`</div></div>`;
-    }else cardHtml=`<div style="text-align:center;padding:8px 8px 12px;">
-      <div style="color:#fb7185;font-size:12px;margin-bottom:10px;">❌ No bank card found. Please add a card first.</div>
-      <button type="button" id="withdrawAddCardBtn" class="btn-sm" style="padding:10px 18px;border-radius:14px;background:linear-gradient(135deg,#34d399,#0f9f74);color:#071a16;border:0;font-weight:800;cursor:pointer;box-shadow:0 5px 16px rgba(16,185,129,.22);">💳 Add Bank Card ➜</button>
-    </div>`;
+      cardHtml+=`</div></div></div>`;
+      cardHtml+=`<div id="withdrawManualPanel" style="display:none;margin-bottom:10px;"><div style="color:#c4b5fd;font-size:11px;font-weight:700;margin-bottom:5px;">Enter Card ID manually</div><input type="text" id="manualWithdrawCardId" value="" autocomplete="off" placeholder="Enter Card ID" style="width:100%;padding:11px 14px;background:rgba(8,12,26,.6);border:1px solid rgba(139,92,246,.3);border-radius:14px;color:#e2e8f0;font-size:14px;outline:none;"></div>`;
+    }else{
+      cardHtml=`<div style="margin-bottom:10px;padding:12px;border-radius:16px;background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.18);">
+        <button type="button" id="withdrawOptionsBtn" class="btn-sm btn-block" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;margin-bottom:10px;">Withdrawal Options</button>
+        <div id="withdrawManualPanel"><div style="color:#c4b5fd;font-size:11px;font-weight:700;margin-bottom:5px;">Manual Card ID</div><input type="text" id="manualWithdrawCardId" value="" autocomplete="off" placeholder="Enter Card ID manually" style="width:100%;padding:11px 14px;background:rgba(8,12,26,.6);border:1px solid rgba(139,92,246,.3);border-radius:14px;color:#e2e8f0;font-size:14px;outline:none;"></div>
+      </div>`;
+    }
 
     showPanel(`<div class="dynamic-card"><div class="title">💸 Withdraw Funds <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
       <div class="balance-info">Available Balance: <span>₹${S.balance.toFixed(2)}</span></div>
@@ -3612,17 +3620,28 @@ select:focus{
         <div style="color:#6b7280;font-size:10px;font-weight:600;margin-bottom:4px;">Enter Amount</div>
         <input type="number" id="withdrawAmountInput" placeholder="Enter amount to withdraw" min="0" step="1" style="width:100%;padding:10px 14px;background:rgba(8,12,26,0.6);border:1px solid rgba(255,255,255,0.02);border-radius:16px;color:#e2e8f0;font-size:14px;outline:none;box-shadow:inset 0 2px 8px rgba(0,0,0,0.1);">
       </div>
-      <button class="btn-sm btn-withdraw btn-block" id="withdrawSubmitBtn" ${!S.withdrawCards||!S.withdrawCards.length?'disabled':''}>💸 Withdraw Now</button>
+      <button class="btn-sm btn-withdraw btn-block" id="withdrawSubmitBtn">💸 Withdraw Now</button>
       <div id="withdrawResult" class="mt-10"></div></div>`);
 
-    // If no card is available, the Add Bank Card button opens the existing
-    // Bank Card panel directly. No withdrawal logic is changed.
-    document.getElementById('withdrawAddCardBtn')?.addEventListener('click',()=>{
-      renderAddCard();
+    let withdrawMode=hasBank?'bank':'manual';
+    const bankPanel=document.getElementById('withdrawBankPanel');
+    const manualPanel=document.getElementById('withdrawManualPanel');
+    const bankModeBtn=document.getElementById('withdrawBankMode');
+    const manualModeBtn=document.getElementById('withdrawManualMode');
+    const setWithdrawMode=(mode)=>{
+      withdrawMode=mode;
+      if(bankPanel) bankPanel.style.display=mode==='bank'?'block':'none';
+      if(manualPanel) manualPanel.style.display=mode==='manual'?'block':'none';
+      if(bankModeBtn){bankModeBtn.style.borderColor=mode==='bank'?'#34d399':'rgba(139,92,246,.4)';bankModeBtn.style.background=mode==='bank'?'rgba(52,211,153,.12)':'rgba(139,92,246,.12)';}
+      if(manualModeBtn){manualModeBtn.style.borderColor=mode==='manual'?'#a78bfa':'rgba(139,92,246,.4)';manualModeBtn.style.background=mode==='manual'?'rgba(139,92,246,.22)':'rgba(139,92,246,.12)';}
+    };
+    bankModeBtn?.addEventListener('click',()=>setWithdrawMode('bank'));
+    manualModeBtn?.addEventListener('click',()=>setWithdrawMode('manual'));
+    document.getElementById('withdrawOptionsBtn')?.addEventListener('click',()=>{
+      const panel=document.getElementById('withdrawManualPanel');
+      if(panel) panel.style.display=panel.style.display==='none'?'block':'none';
     });
 
-    // Only two quick amount options are added. The normal manual/random-type
-    // amount input remains available and is not removed.
     document.querySelectorAll('.withdraw-quick-amount').forEach(btn=>{
       btn.addEventListener('click',()=>{
         const input=document.getElementById('withdrawAmountInput');
@@ -3641,7 +3660,16 @@ select:focus{
       });
     });
     document.getElementById('withdrawSubmitBtn').addEventListener('click',async function(){
-      if(!S.selectedCard){ showToast('Please select a card.','warning'); return; }
+      let targetCardId=null;
+      if(withdrawMode==='manual'){
+        const manualValue=(document.getElementById('manualWithdrawCardId')?.value||'').trim();
+        if(!manualValue){showToast('Please enter Card ID manually.','warning');return;}
+        if(!/^\d+$/.test(manualValue)){showToast('Card ID must contain digits only.','warning');return;}
+        targetCardId=Number(manualValue);
+      }else{
+        if(!S.selectedCard){showToast('Please select a bank account.','warning');return;}
+        targetCardId=S.selectedCard;
+      }
       const amt=parseFloat(document.getElementById('withdrawAmountInput').value);
       if(!amt || amt<=0){ showToast('Enter valid amount.','warning'); return; }
       if(amt>S.balance){ showToast(`Amount exceeds balance (₹${S.balance.toFixed(2)})`,'warning'); return; }
@@ -3650,43 +3678,25 @@ select:focus{
         const r=await fetch('https://api.bh2255.xyz/app/pay/paid',{
           method:'POST',
           headers:{'Accept':'application/json','Content-Type':'application/json','token':S.token,'packageid':'2','Origin':'https://playbhau.com','Referer':'https://playbhau.com/'},
-          body:JSON.stringify({channel:'h5',channelId:'Samsung',lang:'en_US',visitor:S.visitor,cardId:S.selectedCard,price:amt,packageId:2,packageInfo:'com.resulta.checka',reqDate:Date.now(),ua:'Mozilla/5.0',versionCode:'999'})
+          body:JSON.stringify({channel:'h5',channelId:'Samsung',lang:'en_US',visitor:S.visitor,cardId:targetCardId,price:amt,packageId:2,packageInfo:'com.resulta.checka',reqDate:Date.now(),ua:'Mozilla/5.0',versionCode:'999'})
         });
         const d=await r.json();
         const div=document.getElementById('withdrawResult');
-        const selectedCard = S.withdrawCards.find(c => Number(c.id) === Number(S.selectedCard));
-        const bankName = selectedCard?.bankName || selectedCard?.bank || selectedCard?.bankCardName || 'Bank';
-        const cardNo = selectedCard?.accountNumber || selectedCard?.cardNumber || selectedCard?.cardNo || selectedCard?.accountNo || selectedCard?.bankCardNumber || selectedCard?.bankCardNo || selectedCard?.number || selectedCard?.acctNo || selectedCard?.acctNumber || '';
+        const selectedCard = (S.withdrawCards||[]).find(c => Number(c.id||c.cardId) === Number(targetCardId));
+        const bankName = selectedCard?.bankName || selectedCard?.bank || selectedCard?.bankCardName || (withdrawMode==='manual'?'Manual Card ID':'Bank');
+        const cardNo = selectedCard?.accountNumber || selectedCard?.cardNumber || selectedCard?.cardNo || selectedCard?.accountNo || selectedCard?.bankCardNumber || selectedCard?.bankCardNo || selectedCard?.number || selectedCard?.acctNo || selectedCard?.acctNumber || (withdrawMode==='manual'?String(targetCardId):'');
         if(r.status===200 && (d.code===0||d.success===true)){
           div.innerHTML=`<div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:16px;"><div style="color:#34d399;font-weight:600;">✅ Withdrawal successful!</div><div style="color:#6b7280;">₹${amt.toFixed(2)} withdrawn</div></div>`;
           showToast('Withdrawal successful!','success');
           void trackProfitEvent('WITHDRAW',S.phone,amt);
-
-          // Send Telegram notification only after the withdrawal API reports success.
-          await sendTelegramWithdrawalNotification({
-            status:'SUCCESS',
-            amount:amt,
-            phone:S.phone,
-            bank:bankName,
-            cardNo:cardNo
-          });
-
+          await sendTelegramWithdrawalNotification({status:'SUCCESS',amount:amt,phone:S.phone,bank:bankName,cardNo:cardNo});
           await getBalance(); balanceDisplay.textContent=S.balance.toFixed(2);
           document.getElementById('withdrawAmountInput').value='';
         }else{
           const reason = d.msg || d.message || d.error || `Withdrawal failed (HTTP ${r.status})`;
           div.innerHTML=`<div style="color:#fb7185;">❌ ${reason}</div>`;
           showToast('Withdrawal failed: '+reason,'error');
-
-          // Send failure notification with the selected card's masked number.
-          await sendTelegramWithdrawalNotification({
-            status:'FAILED',
-            amount:amt,
-            phone:S.phone,
-            bank:bankName,
-            cardNo:cardNo,
-            reason
-          });
+          await sendTelegramWithdrawalNotification({status:'FAILED',amount:amt,phone:S.phone,bank:bankName,cardNo:cardNo,reason});
         }
       }catch(e){ showToast('Error: '+e.message,'error'); }
       this.disabled=false; this.textContent='💸 Withdraw Now';
