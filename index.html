@@ -3563,7 +3563,7 @@ select:focus{
         const bank=c.bankName||c.bank||'Bank';
         const acc=c.accountNumber||c.cardNumber||c.cardNo||'';
         const sel=(S.selectedCard!==null && id===S.selectedCard)?'selected':'';
-        cardHtml+=`<div class="payment-method card-item ${sel}" data-id="${id}"><div><div class="pm-name">${bank} - ${holder}</div><div class="pm-desc">${acc?'****'+acc.slice(-4):''}</div></div></div>`;
+        cardHtml+=`<div class="payment-method card-item ${sel}" data-id="${id}"><div><div class="pm-name">${bank} - ${holder}</div><div class="pm-desc">Card ID: ${id}${acc?' · Account ****'+acc.slice(-4):''}</div></div></div>`;
       }
       cardHtml+=`</div></div>`;
     }else cardHtml=`<div style="text-align:center;padding:8px 8px 12px;">
