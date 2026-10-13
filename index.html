@@ -4489,6 +4489,16 @@ select:focus{
     }catch(_){ return null; }
   }
 
+  /* Withdrawal status: respCode 0 = Pending, 1 = Processing, 2 = Complete, 3 = Failed */
+  function getWithdrawStatus(respCode) {
+    const code = Number(respCode);
+    if (code === 0) return { label: 'Pending', cls: 'process' };
+    if (code === 1) return { label: 'Processing', cls: 'process' };
+    if (code === 2) return { label: 'Complete', cls: 'complete' };
+    if (code === 3) return { label: 'Failed', cls: 'failed' };
+    return { label: 'Pending', cls: 'process' };
+  }
+
   async function renderTransactions(){
     S.currentPanel='transactions';
     showPanel(`<div class="dynamic-card"><div class="title">📋 Transaction History <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
@@ -4508,7 +4518,7 @@ select:focus{
         headers:{'Accept':'application/json, text/plain, */*','Content-Type':'application/json','Token':S.token,'Visitor':S.visitor,'PackageId':'2','Origin':'https://playbhau.com','Referer':'https://playbhau.com/'},
         body:JSON.stringify({channel:'h5',channelId:'Samsung',lang:'en_US',visitor:S.visitor,packageId:2,packageInfo:'com.resulta.checka',reqDate:Date.now(),ua:'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Mobile Safari/537.36',versionCode:'999',pageNo:1,pageSize:20})
       });
-      if(r2.status===200){ const d=await r2.json(); if(d.code===0){ const list=d.data||[]; for(const t of list){ all.push({type:'withdraw',appDate:t.createTime||Date.now(),amount:t.paidAmount||0,reward:t.reward||0,orderNo:t.orderNo||'',bankName:t.bankName||'',userCardNumber:t.userCardNumber||'',status:t.respCode===2?'COMPLETE':'PENDING',channelName:t.channelName||'SYSTEM'}); } } }
+      if(r2.status===200){ const d=await r2.json(); if(d.code===0){ const list=d.data||[]; for(const t of list){ all.push({type:'withdraw',appDate:t.createTime||Date.now(),amount:t.paidAmount||0,reward:t.reward||0,orderNo:t.orderNo||'',bankName:t.bankName||'',userCardNumber:t.userCardNumber||'',status:getWithdrawStatus(t.respCode).label, statusClass:getWithdrawStatus(t.respCode).cls,channelName:t.channelName||'SYSTEM'}); } } }
     }catch(_){}
     all.sort((a,b)=>(b.appDate||0)-(a.appDate||0));
     let html=`<div class="dynamic-card"><div class="title">📋 Transaction History (${all.length}) <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
@@ -4523,7 +4533,7 @@ select:focus{
       for(const t of all){
         const date=new Date(t.appDate); const ts=date.toLocaleString();
         const isDep=t.type==='deposit'; const amt=parseFloat(t.amount||0).toFixed(2); const bal=parseFloat(t.balance||0).toFixed(2);
-        const icon=isDep?'💰':'💸'; const typeLabel=isDep?'Deposit':'Withdraw'; const sc=t.status==='COMPLETE'?'#34d399':'#fbbf24';
+        const icon=isDep?'💰':'💸'; const typeLabel=isDep?'Deposit':'Withdraw'; const sc=isDep?(t.status==='COMPLETE'?'#34d399':'#fbbf24'):(t.status==='Complete'?'#34d399':(t.status==='Failed'?'#fb7185':'#fbbf24'));
         const displayName=isDep?(t.channelName||t.payTypeName||'Recharge'):(t.bankName||'Bank');
         html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.01);" data-type="${t.type}">
           <div style="flex:1;"><div><span>${icon} ${typeLabel}</span><span style="color:#fbbf24;margin-left:8px;font-weight:600;">₹${amt}</span>${t.gameName?`<span style="color:#6b7280;font-size:10px;margin-left:6px;">🎮 ${t.gameName}</span>`:''}</div>
