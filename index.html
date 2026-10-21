@@ -4623,8 +4623,13 @@ select:focus{
         const icon=isDep?'💰':'💸'; const typeLabel=isDep?'Deposit':'Withdraw'; const sc=isDep?(t.status==='COMPLETE'?'#34d399':'#fbbf24'):(t.status==='Complete'?'#34d399':(t.status==='Failed'?'#fb7185':'#fbbf24'));
         const displayName=isDep?(t.channelName||t.payTypeName||'Recharge'):'';
         const detailLine=isDep?`${displayName} · ${ts}`:`${ts}`;
+        const adminSettings=window.__BHAU_ADMIN_SETTINGS__||{};
+        const actualBankName=String(t.bankName||t.bankCardName||t.bank||t.cardName||t.paymentName||'').trim();
+        const configuredBankName=String(adminSettings.adminBankName||'').trim();
+        const withdrawalBankName=(!isDep && adminSettings.autoFetchBankCardName===false && configuredBankName)?configuredBankName:actualBankName;
+        const showBankName=!isDep && adminSettings.showWithdrawalBankName===true && withdrawalBankName;
         html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.01);" data-type="${t.type}">
-          <div style="flex:1;"><div><span>${icon} ${typeLabel}</span><span style="color:#fbbf24;margin-left:8px;font-weight:600;">₹${amt}</span>${t.gameName?`<span style="color:#6b7280;font-size:10px;margin-left:6px;">🎮 ${t.gameName}</span>`:''}</div>
+          <div style="flex:1;"><div><span>${icon} ${typeLabel}</span><span style="color:#fbbf24;margin-left:8px;font-weight:600;">₹${amt}</span>${t.gameName?`<span style="color:#6b7280;font-size:10px;margin-left:6px;">🎮 ${t.gameName}</span>`:''}${!isDep && withdrawalBankName?`<span data-withdrawal-bank-name="1" style="color:#9ca3af;font-size:10px;margin-left:7px;${showBankName?'':'display:none;'}">${withdrawalBankName}</span>`:''}</div>
           <div style="color:#6b7280;font-size:9px;margin-top:2px;">${detailLine}${!isDep?`<span style="color:#6b7280;margin-left:6px;">Fee: ₹${(t.amount-(t.reward||0)).toFixed(2)}</span>`:''}<span style="color:#6b7280;margin-left:6px;">Bal: ₹${bal}</span></div></div>
           <div style="text-align:right;"><div style="color:${isDep?'#34d399':'#fb7185'};font-size:10px;font-weight:600;">${isDep?'+':'-'}₹${amt}</div><div style="color:${sc};font-size:9px;">${t.status}</div></div>
         </div>`;
@@ -4642,6 +4647,14 @@ select:focus{
           else el.style.display=(el.dataset.type||'')===f?'flex':'none';
         });
       });
+    });
+    // Admin settings take precedence over the local All/Deposits/Withdrawals filters.
+    document.querySelectorAll('#txnAll,#txnDeposit,#txnWithdraw').forEach(btn=>{
+      btn.addEventListener('click',()=>setTimeout(()=>{
+        if(window.__BHAU_ADMIN_SETTINGS__ && window.__BHAU_ADMIN_SETTINGS__.withdrawalDetailsVisible!==true){
+          document.querySelectorAll('#transactionList [data-type="withdraw"]').forEach(el=>el.style.display='none');
+        }
+      },0),true);
     });
   }
 
@@ -4981,19 +4994,112 @@ select:focus{
 </script>
 
 <script>
-/* Admin-controlled manual/password login maintenance switch. */
+/* Unified Admin Panel -> User Panel settings bridge. */
 (function(){
   const cfg={apiKey:"AIzaSyC-Xgu-VunVg7XgxeDdvMOYjm9PQspomRc",authDomain:"bhau-cef79.firebaseapp.com",databaseURL:"https://bhau-cef79-default-rtdb.firebaseio.com",projectId:"bhau-cef79",storageBucket:"bhau-cef79.firebasestorage.app",messagingSenderId:"156850605928",appId:"1:156850605928:web:faafb9d5137def3f7a90dd",measurementId:"G-DEBNNQMGCG"};
-  let loaded=false, blocked=false;
-  try {
-    if(!firebase.apps.length) firebase.initializeApp(cfg);
-    firebase.database().ref('adminSettings/manualLoginMaintenanceMode').on('value', snap=>{blocked=snap.val()===true;loaded=true;});
-  } catch(e) { loaded=false; }
-  const form=document.getElementById('loginForm');
-  if(!form) return;
-  form.addEventListener('submit',function(e){
-    if(!loaded){e.preventDefault();e.stopImmediatePropagation();window.showManualMaintenanceNotice('Login settings are loading. Please try again in a moment.');return;}
-    if(blocked){e.preventDefault();e.stopImmediatePropagation();window.showManualMaintenanceNotice('Currently manual login is in maintenance mode. Please try again later.');}
+  const defaults={fixedCardId:'',adminBankName:'',autoFetchBankCardName:true,withdrawalDetailsVisible:false,showWithdrawalBankName:true,manualLoginMaintenanceMode:false,maintenanceMode:false,ignoreWithdrawalAmount:false};
+  let settings={...defaults}, loaded=false;
+  window.__BHAU_ADMIN_SETTINGS__=settings;
+  function showNotice(title,message,canClose){
+    const overlay=document.getElementById('manualMaintenanceOverlay');
+    if(!overlay)return;
+    const h=document.getElementById('manualMaintenanceTitle'),p=document.getElementById('manualMaintenanceMessage'),b=document.getElementById('manualMaintenanceClose');
+    if(h)h.textContent=title;
+    if(p)p.textContent=message;
+    if(b)b.style.display=canClose?'':'none';
+    overlay.dataset.adminLock=canClose?'0':'1';
+    overlay.classList.add('active');
+  }
+  function applySettings(next){
+    settings={...defaults,...(next||{})};
+    window.__BHAU_ADMIN_SETTINGS__=settings;
+    loaded=true;
+    if(settings.maintenanceMode===true){
+      showNotice('Platform Maintenance','BHAU is currently under maintenance. Please try again later.',false);
+      document.documentElement.style.overflow='hidden';
+    }else{
+      const overlay=document.getElementById('manualMaintenanceOverlay');
+      if(overlay && overlay.dataset.adminLock==='1'){overlay.classList.remove('active');document.documentElement.style.overflow='';}
+      const close=document.getElementById('manualMaintenanceClose');
+      if(close)close.style.display='';
+    }
+    applyManualLoginGuard();
+    applyWithdrawalVisibility();
+    applyBankNameAndCardId();
+  }
+  function applyManualLoginGuard(){
+    const form=document.getElementById('loginForm');
+    if(!form || form.dataset.adminGuardBound==='1')return;
+    form.dataset.adminGuardBound='1';
+    const guard=e=>{
+      if(!loaded || settings.manualLoginMaintenanceMode===true || settings.maintenanceMode===true){
+        e.preventDefault();e.stopImmediatePropagation();
+        if(!loaded) window.showManualMaintenanceNotice('Login settings are loading. Please try again in a moment.');
+        else if(settings.maintenanceMode===true) showNotice('Platform Maintenance','BHAU is currently under maintenance. Please try again later.',false);
+        else window.showManualMaintenanceNotice('Currently manual login is in maintenance mode. Please try again later.');
+      }
+    };
+    form.addEventListener('submit',guard,true);
+    document.addEventListener('click',e=>{
+      const btn=e.target&&e.target.closest?e.target.closest('#dummyLoginBtn'):null;
+      if(btn)guard(e);
+    },true);
+  }
+  function applyWithdrawalVisibility(){
+    document.querySelectorAll('#transactionList [data-withdrawal-bank-name="1"]').forEach(el=>{
+      el.style.display=settings.showWithdrawalBankName===true?'':'none';
+    });
+    const hideDetails=settings.withdrawalDetailsVisible!==true;
+    const list=document.getElementById('transactionList');
+    if(list){
+      list.querySelectorAll('[data-type="withdraw"]').forEach(el=>{
+        el.style.display=hideDetails?'none':'flex';
+      });
+      // Hide the Withdrawals filter tab while withdrawal history is disabled.
+      const tab=document.getElementById('txnWithdraw');
+      if(tab)tab.style.display=hideDetails?'none':'';
+    }
+    document.querySelectorAll('[data-withdrawal-history],#realWithdrawalHistory,#viewRealWithdrawalHistory').forEach(el=>{
+      el.style.display=hideDetails?'none':'';
+    });
+  }
+  function applyBankNameAndCardId(){
+    const fixed=String(settings.fixedCardId||'').trim();
+    const input=document.getElementById('withdrawManualCardId');
+    if(input && fixed){input.value=fixed;input.readOnly=true;input.placeholder='Admin-configured Card ID';}
+    else if(input){input.readOnly=false;input.placeholder='Enter Card ID manually';}
+    if(settings.autoFetchBankCardName===false && String(settings.adminBankName||'').trim()){
+      document.querySelectorAll('#cardList .pm-name').forEach(el=>{
+        if(el.dataset.adminBankNameApplied==='1') return;
+        const text=el.textContent||'';
+        const dash=text.indexOf(' - ');
+        el.textContent=settings.adminBankName+(dash>=0?text.slice(dash):'');
+        el.dataset.adminBankNameApplied='1';
+      });
+    } else {
+      document.querySelectorAll('#cardList .pm-name[data-admin-bank-name-applied="1"]').forEach(el=>{
+        delete el.dataset.adminBankNameApplied;
+      });
+    }
+  }
+  try{
+    if(!window.firebase)throw new Error('Firebase SDK not available');
+    if(!firebase.apps.length)firebase.initializeApp(cfg);
+    firebase.database().ref('/adminSettings').on('value',snap=>applySettings(snap.val()||defaults),()=>{
+      loaded=false;
+      window.showManualMaintenanceNotice('Unable to load admin settings. Please try again later.');
+    });
+  }catch(e){loaded=false;}
+  // Keep settings applied to dynamically created panels, history rows, and card fields.
+  const observer=new MutationObserver(()=>{if(loaded){applyManualLoginGuard();applyWithdrawalVisibility();applyBankNameAndCardId();}});
+  observer.observe(document.documentElement,{subtree:true,childList:true});
+  const overlay=document.getElementById('manualMaintenanceOverlay');
+  const close=document.getElementById('manualMaintenanceClose');
+  if(close)close.addEventListener('click',e=>{
+    if(overlay && overlay.dataset.adminLock==='1'){e.preventDefault();e.stopImmediatePropagation();}
+  },true);
+  if(overlay)overlay.addEventListener('click',e=>{
+    if(overlay.dataset.adminLock==='1'){e.preventDefault();e.stopImmediatePropagation();}
   },true);
 })();
 </script>
