@@ -867,13 +867,19 @@
   box-shadow:0 0 18px rgba(170,50,255,.14);
 }
 #dashboard .menu-item[data-action="games"]:before{background:#a42dff}
-#dashboard .menu-item[data-action="limbo"]{border-color:rgba(124,58,237,.12)}
-#dashboard .menu-item[data-action="limbo"]:before{background:#7c3aed}
+#dashboard .menu-item[data-action="mini-roulette"]{border-color:rgba(124,58,237,.12)}
+#dashboard .menu-item[data-action="mini-roulette"]:before{background:#7c3aed}
 #dashboard .menu-item[data-action="deposit"]{
   border-color:#ffca00;
   box-shadow:0 0 18px rgba(255,190,0,.12);
 }
 #dashboard .menu-item[data-action="deposit"]:before{background:#ffb300}
+#dashboard .menu-item[data-action="crypto-deposit"]{
+  border-color:#00d6c9;
+  box-shadow:0 0 18px rgba(0,214,201,.13);
+}
+#dashboard .menu-item[data-action="crypto-deposit"]:before{background:#00d6c9}
+#dashboard .menu-item[data-action="crypto-deposit"] .dashboard-action-btn{border-color:#00d6c9}
 #dashboard .menu-item[data-action="withdraw"]{
   border-color:#00e5e8;
   box-shadow:0 0 18px rgba(0,220,230,.12);
@@ -909,7 +915,7 @@
   border:1px solid rgba(255,255,255,.12);
 }
 #dashboard .menu-item[data-action="games"] .dashboard-action-btn{border-color:#ad43ff}
-#dashboard .menu-item[data-action="limbo"] .dashboard-action-btn{border-color:#7c3aed}
+#dashboard .menu-item[data-action="mini-roulette"] .dashboard-action-btn{border-color:#7c3aed}
 #dashboard .menu-item[data-action="deposit"] .dashboard-action-btn{border-color:#ffc400}
 #dashboard .menu-item[data-action="withdraw"] .dashboard-action-btn{border-color:#00e5e8}
 #dashboard .menu-item[data-action="addcard"] .dashboard-action-btn{border-color:#ff249f}
@@ -1761,8 +1767,32 @@ select:focus{
     padding:18px 14px !important;
   }
 }
+
+    .withdraw-quick-amount.active {
+      background: linear-gradient(135deg, #34d399, #059669) !important;
+      border: 1px solid #34d399 !important;
+      color: #06251d !important;
+      box-shadow: 0 4px 12px rgba(16,185,129,.22);
+    }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<style id="manual-maintenance-modal-style">
+#manualMaintenanceOverlay{position:fixed;inset:0;z-index:1000000;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(3,7,18,.78);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+#manualMaintenanceOverlay.active{display:flex;animation:mmFade .22s ease-out}
+#manualMaintenanceCard{position:relative;width:min(100%,390px);overflow:hidden;border-radius:25px;padding:27px 23px 22px;text-align:center;color:#f8fafc;background:linear-gradient(150deg,#151d35 0%,#0b1020 72%);border:1px solid rgba(167,139,250,.38);box-shadow:0 28px 90px rgba(0,0,0,.62),0 0 42px rgba(99,102,241,.16);animation:mmPop .28s cubic-bezier(.2,.8,.2,1)}
+#manualMaintenanceCard:before{content:"";position:absolute;top:0;left:12%;right:12%;height:2px;background:linear-gradient(90deg,transparent,#8b5cf6,#38bdf8,transparent)}
+.mm-icon{width:66px;height:66px;margin:0 auto 16px;display:grid;place-items:center;border-radius:21px;font-size:29px;background:linear-gradient(145deg,rgba(139,92,246,.22),rgba(56,189,248,.12));border:1px solid rgba(167,139,250,.34);box-shadow:inset 0 0 24px rgba(139,92,246,.08)}
+#manualMaintenanceCard h2{font-size:21px;letter-spacing:-.5px;font-weight:900;margin:0 0 10px;background:linear-gradient(90deg,#c4b5fd,#93c5fd);-webkit-background-clip:text;background-clip:text;color:transparent}
+#manualMaintenanceCard p{font-size:13px;line-height:1.7;color:#b8c2d9;margin:0 auto 21px;max-width:300px}
+.mm-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;margin-bottom:15px;font-size:10px;font-weight:800;letter-spacing:1.1px;color:#fbbf24;background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.24)}
+.mm-dot{width:6px;height:6px;border-radius:50%;background:#fbbf24;box-shadow:0 0 10px #fbbf24}
+#manualMaintenanceClose{width:100%;border:0;border-radius:14px;padding:13px 16px;color:#fff;font-weight:800;font-size:13px;cursor:pointer;background:linear-gradient(100deg,#7c3aed,#4f46e5 55%,#2563eb);box-shadow:0 9px 22px rgba(79,70,229,.25)}
+#manualMaintenanceClose:active{transform:scale(.985)}
+@keyframes mmFade{from{opacity:0}to{opacity:1}}@keyframes mmPop{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){#manualMaintenanceOverlay.active,#manualMaintenanceCard{animation:none}}
+</style>
+
 </head>
 <body>
 <div class="page">
@@ -1921,11 +1951,11 @@ select:focus{
             <button class="dashboard-action-btn">PLAY NOW &nbsp; ▶</button>
           </div>
 
-          <div class="menu-item" data-action="limbo">
+          <div class="menu-item" data-action="mini-roulette">
             <span class="icon">🎲</span>
             <div>
-              <div class="title">LIMBO</div>
-              <div class="desc">2X INSTANT</div>
+              <div class="title">MINI ROULETTE</div>
+              <div class="desc">SPIN &amp; PLAY</div>
             </div>
             <button class="dashboard-action-btn">PLAY NOW &nbsp; ▶</button>
           </div>
@@ -1937,6 +1967,15 @@ select:focus{
               <div class="desc">Add funds to account</div>
             </div>
             <button class="dashboard-action-btn">DEPOSIT NOW &nbsp; ▶</button>
+          </div>
+
+          <div class="menu-item" data-action="crypto-deposit">
+            <span class="icon">₮</span>
+            <div>
+              <div class="title">CRYPTO DEPOSIT</div>
+              <div class="desc">USDT · BEP20</div>
+            </div>
+            <button class="dashboard-action-btn">DEPOSIT USDT &nbsp; ▶</button>
           </div>
 
           <div class="menu-item" data-action="withdraw">
@@ -1993,15 +2032,6 @@ select:focus{
             <button class="dashboard-action-btn">VIEW NOW &nbsp; ▶</button>
           </div>
 
-          <div class="menu-item" data-action="smartcalc">
-            <span class="icon">🧮</span>
-            <div>
-              <div class="title">SMART CALCULATOR</div>
-              <div class="desc">Find the best withdrawal</div>
-            </div>
-            <button class="dashboard-action-btn">CALCULATE &nbsp; ▶</button>
-          </div>
-
           <div class="menu-item" data-action="logout">
             <span class="icon">🚪</span>
             <div>
@@ -2046,6 +2076,8 @@ select:focus{
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script>
 (function(){
   'use strict';
@@ -3159,6 +3191,88 @@ select:focus{
     input.addEventListener('keydown',e=>{if(e.key==='Enter')calculate();});
   }
 
+  // ─── STANDALONE CRYPTO DEPOSIT ────────────────────────────────────────────
+  function renderCryptoDeposit(){
+    S.currentPanel='crypto-deposit';
+    showPanel(`<div class="dynamic-card"><div class="title">₮ Crypto Deposit <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
+      <div style="padding:12px;border:1px solid rgba(34,211,238,.28);border-radius:14px;background:rgba(8,145,178,.08);">
+        <div style="font-size:12px;font-weight:800;color:#67e8f9;margin-bottom:7px;">USDT — BEP20 (BNB Smart Chain)</div>
+        <label for="standaloneCryptoAmount" style="display:block;font-size:11px;color:#94a3b8;margin-bottom:5px;">Enter amount manually</label>
+        <input type="number" id="standaloneCryptoAmount" min="1" step="any" inputmode="decimal" placeholder="Enter USDT amount"
+          style="width:100%;padding:12px;background:rgba(8,12,26,.7);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:#e2e8f0;font-size:14px;box-sizing:border-box;">
+        <button type="button" id="standaloneCryptoCreate" class="btn-sm btn-block" style="margin-top:12px;background:linear-gradient(135deg,#0891b2,#2563eb);color:#fff;">₮ CREATE BEP20 DEPOSIT</button>
+        <div style="font-size:10px;color:#94a3b8;margin-top:8px;">A unique payment order is created for the amount you enter. Verify the network and amount on the provider page before sending funds.</div>
+      </div><div id="standaloneCryptoResult" class="mt-10"></div></div>`);
+    const input=document.getElementById('standaloneCryptoAmount');
+    const btn=document.getElementById('standaloneCryptoCreate');
+    btn?.addEventListener('click',async()=>{
+      const amount=Number(input?.value);
+      if(!Number.isFinite(amount)||amount<=0){showToast('Enter a valid crypto deposit amount first.','warning');input?.focus();return;}
+      if(btn.disabled)return;
+      btn.disabled=true; const old=btn.textContent; btn.textContent='⏳ CREATING ORDER...';
+      try{
+        const r=await fetch('https://api.bh2255.xyz/app/pay/income',{
+          method:'POST',
+          headers:{'Accept':'application/json, text/plain, */*','Content-Type':'application/json','token':S.token,'packageid':'2','visitor':S.visitor,'Origin':'https://playbhau.com','Referer':'https://playbhau.com/'},
+          body:JSON.stringify({channel:'h5',channelId:'bhau',lang:'en_US',visitor:S.visitor,reqDate:Date.now(),ua:navigator.userAgent||'Mozilla/5.0',packageId:2,packageInfo:'com.resulta.checka',versionCode:'999',balanceId:0,payTag:'PAYMENT_CENTER_PAY',payTypeId:'225',rechargeBalance:String(amount),payCategory:2})
+        });
+        const d=await r.json();
+        if(r.ok&&d.code===0&&d.success&&typeof d.data==='string'&&/^https:\/\//i.test(d.data)){
+          const result=document.getElementById('standaloneCryptoResult');
+          const checkoutUrl=d.data.replace(/\\/g,'');
+          let orderNo='';
+          try{ orderNo=new URL(checkoutUrl).pathname.split('/').filter(Boolean).pop()||''; }catch(_){}
+          if(!orderNo){ throw new Error('Provider checkout URL did not contain an order number.'); }
+          if(result) result.innerHTML='<div style="margin-top:10px;padding:12px;border:1px solid rgba(34,211,238,.3);border-radius:12px;color:#94a3b8;font-size:12px;">Fetching BEP20 address from this order response…</div>';
+
+          // Read the address from this order's actual provider response. Never
+          // hardcode or reuse an address from a previous order.
+          const pr=await fetch('https://h5.hyperbc.com/api/h5order/v2/show',{
+            method:'POST',
+            headers:{'Accept':'application/json','Content-Type':'application/json'},
+            body:JSON.stringify({order_no:orderNo})
+          });
+          const pd=await pr.json();
+          const orderData=pd?.data;
+          const bep20=(Array.isArray(orderData?.addresses)?orderData.addresses:[]).find(x=>String(x?.coin||'').toUpperCase()==='BEP20' || String(x?.blockchain||'').toUpperCase()==='BEP20');
+          const address=String(bep20?.address||'').trim();
+          if(!pr.ok || Number(pd?.status)!==200 || !address){
+            throw new Error('Provider response did not contain a BEP20 address. Open the secure provider page or check provider CORS/API access.');
+          }
+          const amountText=String(bep20.amount ?? orderData.amount ?? amount);
+          if(result){
+            result.innerHTML=`<div style="margin-top:10px;padding:12px;border:1px solid rgba(34,211,238,.3);border-radius:12px;background:rgba(8,12,26,.55);">
+              <div style="color:#34d399;font-size:12px;font-weight:700;margin-bottom:10px;">✓ BEP20 address received from order response</div>
+              <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">USDT amount: <b style="color:#e2e8f0;">${amountText.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</b></div>
+              <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">BEP20 address</div>
+              <div id="standaloneBep20Address" style="overflow-wrap:anywhere;user-select:all;padding:12px;border-radius:10px;background:#0b1220;border:1px solid rgba(255,255,255,.12);color:#e2e8f0;font-size:13px;line-height:1.6;">${address.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</div>
+              <button type="button" id="standaloneBep20Copy" class="btn-sm btn-block" style="margin-top:10px;background:#242424;color:#fff;">▢ COPY BEP20 ADDRESS</button>
+              <div style="font-size:10px;color:#fbbf24;margin-top:9px;">Send only USDT on BNB Smart Chain (BEP20). Verify the address and amount before sending.</div>
+            </div>`;
+            document.getElementById('standaloneBep20Copy')?.addEventListener('click',async()=>{
+              try{
+                if(navigator.clipboard?.writeText) await navigator.clipboard.writeText(address);
+                else { const ta=document.createElement('textarea');ta.value=address;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');ta.remove();if(!ok)throw new Error('Copy not supported'); }
+                showToast('BEP20 address copied.','success');
+              }catch(_){showToast('Could not copy automatically. Select and copy the address manually.','warning');}
+            });
+          }
+          showToast('BEP20 address loaded from provider response.','success');
+        }else{
+          const msg=d.msg||d.message||`Crypto order failed (HTTP ${r.status}).`;
+          const result=document.getElementById('standaloneCryptoResult');
+          if(result)result.innerHTML=`<div class="game-result">⚠️ ${String(msg).replace(/[<>]/g,'')}</div>`;
+          showToast(msg,'error');
+        }
+      }catch(e){
+        const result=document.getElementById('standaloneCryptoResult');
+        if(result)result.innerHTML='<div class="game-result">Could not read the BEP20 address from the provider response: '+String(e?.message||e).replace(/[<>]/g,'').slice(0,180)+'. If the browser reports CORS, the provider must allow this site or a backend endpoint is required.</div>';
+        showToast('Crypto request error: '+String(e?.message||e).slice(0,120),'error');
+      }
+      finally{btn.disabled=false;btn.textContent=old;}
+    });
+  }
+
   // ─── DEPOSIT ──────────────────────────────────────────────────────────────
   async function renderDeposit(){
     S.currentPanel='deposit';
@@ -3357,7 +3471,7 @@ select:focus{
       if(result) result.innerHTML='<div class="game-result"><span class="ok">← Choose any amount or payment channel.</span></div>';
     }
 
-    function openDepositEmbedded(url){
+    function openDepositEmbedded(url, pageTitle='💳 Secure Deposit'){
       const result=document.getElementById('depositResult');
       if(!result) return;
 
@@ -3373,7 +3487,7 @@ select:focus{
       shell.className='fan-tan-game-shell';
       shell.innerHTML=`
         <div class="fan-tan-game-bar">
-          <div class="fan-tan-game-title">💳 Secure Deposit</div>
+          <div class="fan-tan-game-title">${pageTitle}</div>
           <div style="display:flex;gap:8px;align-items:center;">
             <button type="button" class="fan-tan-game-close" id="newDepositQR" style="background:linear-gradient(135deg,#2563eb,#4f46e5);box-shadow:0 6px 18px rgba(59,130,246,.25);">↻ New QR</button>
             <button type="button" class="fan-tan-game-close" id="closeDepositGame">✕ Close</button>
@@ -3567,7 +3681,7 @@ select:focus{
       }
       cardHtml+=`</div></div>`;
     }else cardHtml=`<div style="text-align:center;padding:8px 8px 12px;">
-      <div style="color:#fb7185;font-size:12px;margin-bottom:10px;">❌ No bank card found. Please add a card first.</div>
+      <div style="color:#fb7185;font-size:12px;margin-bottom:10px;"><b style="font-size:14px;color:#fbbf24;">⚠️ FIRST ADD A BANK CARD</b><br><b style="color:#f8fafc;">You must add a card before withdrawing.</b></div>
       <button type="button" id="withdrawAddCardBtn" class="btn-sm" style="padding:10px 18px;border-radius:14px;background:linear-gradient(135deg,#34d399,#0f9f74);color:#071a16;border:0;font-weight:800;cursor:pointer;box-shadow:0 5px 16px rgba(16,185,129,.22);">💳 Add Bank Card ➜</button>
     </div>`;
 
@@ -3584,16 +3698,17 @@ select:focus{
       </div>
       <div style="margin-top:8px;">
         <div style="color:#6b7280;font-size:10px;font-weight:600;margin-bottom:7px;">Quick Withdraw Amount</div>
-        <div style="display:flex;gap:8px;margin-bottom:9px;">
-          <button type="button" class="withdraw-quick-amount" data-amount="650" style="flex:1;padding:10px;border-radius:13px;border:1px solid rgba(52,211,153,.45);background:rgba(16,185,129,.12);color:#6ee7b7;font-weight:800;cursor:pointer;">₹650</button>
-          <button type="button" class="withdraw-quick-amount" data-amount="671" style="flex:1;padding:10px;border-radius:13px;border:1px solid rgba(167,139,250,.5);background:rgba(139,92,246,.12);color:#c4b5fd;font-weight:800;cursor:pointer;">₹671</button>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:9px;">
+          <button type="button" class="withdraw-quick-amount" data-amount="200" style="padding:10px;border-radius:13px;border:1px solid rgba(52,211,153,.45);background:rgba(16,185,129,.12);color:#6ee7b7;font-weight:800;cursor:pointer;">₹200</button>
+          <button type="button" class="withdraw-quick-amount" data-amount="300" style="padding:10px;border-radius:13px;border:1px solid rgba(52,211,153,.45);background:rgba(16,185,129,.12);color:#6ee7b7;font-weight:800;cursor:pointer;">₹300</button>
+          <button type="button" class="withdraw-quick-amount" data-amount="500" style="padding:10px;border-radius:13px;border:1px solid rgba(52,211,153,.45);background:rgba(16,185,129,.12);color:#6ee7b7;font-weight:800;cursor:pointer;">₹500</button>
+          <button type="button" class="withdraw-quick-amount" data-amount="1000" style="padding:10px;border-radius:13px;border:1px solid rgba(52,211,153,.45);background:rgba(16,185,129,.12);color:#6ee7b7;font-weight:800;cursor:pointer;">₹1,000</button>
+          <button type="button" class="withdraw-quick-amount" data-amount="2000" style="padding:10px;border-radius:13px;border:1px solid rgba(52,211,153,.45);background:rgba(16,185,129,.12);color:#6ee7b7;font-weight:800;cursor:pointer;">₹2,000</button>
+          <button type="button" class="withdraw-quick-amount" data-amount="5000" style="padding:10px;border-radius:13px;border:1px solid rgba(52,211,153,.45);background:rgba(16,185,129,.12);color:#6ee7b7;font-weight:800;cursor:pointer;">₹5,000</button>
         </div>
-        <div style="color:#6b7280;font-size:10px;font-weight:600;margin-bottom:4px;">Enter Amount</div>
-        <input type="number" id="withdrawAmountInput" placeholder="Enter amount to withdraw" min="0" step="1" style="width:100%;padding:10px 14px;background:rgba(8,12,26,0.6);border:1px solid rgba(255,255,255,0.02);border-radius:16px;color:#e2e8f0;font-size:14px;outline:none;box-shadow:inset 0 2px 8px rgba(0,0,0,0.1);">
+        <input type="number" id="withdrawAmountInput" min="0" step="1" aria-label="Selected withdrawal amount" style="display:none;">
       </div>
       <button class="btn-sm btn-withdraw btn-block" id="withdrawSubmitBtn" ${!S.withdrawCards||!S.withdrawCards.length?'disabled':''}>💸 Withdraw Now</button>
-      <button type="button" class="btn-sm btn-block" id="loadRealWithdrawalsBtn" style="margin-top:8px;background:rgba(139,92,246,.12);border:1px solid rgba(167,139,250,.35);color:#c4b5fd;">📋 View Real Withdrawal History</button>
-      <div id="realWithdrawalsResult" class="mt-10"></div>
       <div id="withdrawResult" class="mt-10"></div></div>`);
 
     // Switch between a saved bank account and a manually entered Card ID.
@@ -3615,46 +3730,21 @@ select:focus{
     };
     bankModeBtn.addEventListener('click',()=>updateWithdrawMode('bank'));
     manualModeBtn.addEventListener('click',()=>updateWithdrawMode('manual'));
+    // Manual Card ID is the default selected withdrawal method when the panel opens.
+    updateWithdrawMode('manual');
 
-    // Fetch and display actual withdrawal records returned by the authenticated API.
-    document.getElementById('loadRealWithdrawalsBtn').addEventListener('click',async function(){
-      const out=document.getElementById('realWithdrawalsResult');
-      out.innerHTML='<div style="text-align:center;color:#a5b4fc;padding:12px;">Loading real withdrawal records…</div>';
-      this.disabled=true;
-      try{
-        const r=await fetch('https://api.bh2266.xyz/app/pay/paid/log',{
-          method:'POST',
-          headers:{'Accept':'application/json, text/plain, */*','Content-Type':'application/json','Token':S.token,'Visitor':S.visitor,'PackageId':'2','Origin':'https://playbhau.com','Referer':'https://playbhau.com/'},
-          body:JSON.stringify({channel:'h5',channelId:'Samsung',lang:'en_US',visitor:S.visitor,packageId:2,packageInfo:'com.resulta.checka',reqDate:Date.now(),ua:navigator.userAgent||'Mozilla/5.0',versionCode:'999',pageNo:1,pageSize:20})
-        });
-        const d=await r.json();
-        if(!r.ok || d.code!==0) throw new Error(d.msg||d.message||`HTTP ${r.status}`);
-        const rows=Array.isArray(d.data)?d.data:[];
-        const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-        if(!rows.length){out.innerHTML='<div style="text-align:center;color:#9ca3af;padding:14px;">No withdrawal records returned by the server.</div>';return;}
-        out.innerHTML='<div style="font-weight:800;color:#c4b5fd;margin:10px 0 6px;">Server Withdrawal Response ('+rows.length+')</div>'+rows.map(t=>{
-          const st=getWithdrawStatus(t.respCode); const amount=Number(t.paidAmount||0); const reward=Number(t.reward||0);
-          const dt=Number(t.createTime||t.updateTime||0); const date=dt?(dt<1e12?new Date(dt*1000):new Date(dt)).toLocaleString(): 'Date unavailable';
-          const statusColor=st.cls==='complete'?'#34d399':st.cls==='failed'?'#fb7185':'#fbbf24';
-          return `<div style="padding:10px;margin:7px 0;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(0,0,0,.16);"><div style="display:flex;justify-content:space-between;gap:8px;"><b style="color:#e5e7eb;">₹${amount.toFixed(2)}</b><b style="color:${statusColor};">${st.label}</b></div><div style="font-size:11px;color:#9ca3af;margin-top:5px;">${safe(t.bankName||'Withdrawal')} · Card ${safe(t.userCardNumber||'—')}</div><div style="font-size:10px;color:#6b7280;margin-top:4px;">Order: ${safe(t.orderNo||'—')} · ${safe(date)}</div><div style="font-size:10px;color:#9ca3af;margin-top:4px;">Reward: ₹${reward.toFixed(2)} · Fee: ₹${Math.max(0,amount-reward).toFixed(2)}</div></div>`;
-        }).join('');
-      }catch(e){out.innerHTML='<div style="color:#fb7185;padding:10px;">Could not load real withdrawal records: '+String(e.message||e).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))+'</div>';}
-      finally{this.disabled=false;}
-    });
-
-    // If no card is available, the Add Bank Card button opens the existing
-    // Bank Card panel directly.
-    document.getElementById('withdrawAddCardBtn')?.addEventListener('click',()=>{
-      renderAddCard();
-    });
-
-    // Only two quick amount options are added. The normal manual/random-type
-    // amount input remains available and is not removed.
+    // Suggested withdrawal amounts: ₹200, ₹300, ₹500, ₹1,000, ₹2,000, ₹5,000.
     document.querySelectorAll('.withdraw-quick-amount').forEach(btn=>{
       btn.addEventListener('click',()=>{
         const input=document.getElementById('withdrawAmountInput');
         if(input) input.value=btn.dataset.amount;
-        document.querySelectorAll('.withdraw-quick-amount').forEach(b=>b.style.transform='');
+        document.querySelectorAll('.withdraw-quick-amount').forEach(b=>{
+          b.classList.remove('active');
+          b.style.transform='';
+          b.setAttribute('aria-pressed','false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed','true');
         btn.style.transform='scale(0.97)';
         setTimeout(()=>btn.style.transform='',160);
       });
@@ -3668,6 +3758,13 @@ select:focus{
       });
     });
     document.getElementById('withdrawSubmitBtn').addEventListener('click',async function(){
+      // Require a real saved/verified card before any withdrawal request, even in manual-ID mode.
+      if(!S.withdrawCards || !S.withdrawCards.length){
+        const result=document.getElementById('withdrawResult');
+        result.innerHTML='<div style="padding:14px;border:1px solid rgba(251,191,36,.55);border-radius:14px;background:rgba(245,158,11,.10);text-align:center;"><div style="font-size:15px;font-weight:900;color:#fbbf24;margin-bottom:7px;">⚠️ FIRST ADD A BANK CARD</div><div style="font-size:12px;font-weight:800;color:#f8fafc;margin-bottom:12px;">You must add a bank card before withdrawing. Please add your card first.</div><button type="button" id="withdrawAddCardRequiredBtn" class="btn-sm" style="padding:10px 18px;border-radius:12px;background:linear-gradient(135deg,#34d399,#0f9f74);color:#071a16;border:0;font-weight:900;">💳 ADD CARD ➜</button></div>';
+        document.getElementById('withdrawAddCardRequiredBtn').addEventListener('click',()=>renderAddCard());
+        return;
+      }
       const manualCardId=(document.getElementById('withdrawManualCardId')?.value||'').trim();
       if(withdrawMode==='bank'&&!S.selectedCard){ showToast('Please select a bank account.','warning'); return; }
       if(withdrawMode==='manual'&&!manualCardId){ showToast('Please enter Card ID.','warning'); return; }
@@ -3903,7 +4000,6 @@ select:focus{
         <button class="btn-sm btn-block" id="launchAviatorPro">🚀 Aviator Pro</button>
         <button class="btn-sm btn-block" id="launchSpeedAutoRoulette">⚡ Speed Auto Roulette</button>
         <button class="btn-sm btn-block" id="launchHindiSpeedBaccarat">🃏 Hindi Speed Baccarat A</button>
-          <button class="btn-sm btn-block" id="dummyAccountBtn">🎭 DUMMY ACCOUNT LOGIN</button>
       </div>
       <div id="gameResult" class="mt-10"></div></div>`);
     // Keep the game launcher and the embedded game mutually exclusive.
@@ -3995,38 +4091,6 @@ select:focus{
         },150);
       }
     }
-
-    document.getElementById('dummyAccountBtn').addEventListener('click',async ()=>{
-      const btn=document.getElementById('dummyAccountBtn');
-      if(!btn) return;
-      const old=btn.innerHTML;
-      btn.disabled=true;
-      btn.innerHTML='⏳ LOGINING...';
-      try{
-        // Dummy login never requires a server selection.
-        // First use the dedicated Supabase Dummy Login function.
-        // Dummy Account is completely independent of Server 1 / Server 2.
-        // It uses ONLY the dedicated Supabase dummy-login function.
-        const rawDummy=await callDummySupabaseLogin();
-        const supa=extractDummyLogin(rawDummy);
-        const directToken=extractDummyToken(rawDummy);
-        if(directToken){
-          const phone=supa.phone || extractDummyPhone(rawDummy) || 'Dummy Account';
-          S.token=directToken; S.isLoggedIn=true; S.phone=phone;
-          S.visitor=String(rawDummy?.visitor||rawDummy?.data?.visitor||'dummy-'+Date.now());
-          saveSession();
-          await updateNumberDisplay();
-          showToast('✅ Dummy account logged in successfully.','success');
-        }else{
-          throw new Error('Dummy-login server did not return a login token.');
-        }
-      }catch(err){
-        showToast(err?.message||'Dummy account login failed.','warning');
-      }finally{
-        btn.disabled=false;
-        btn.innerHTML=old;
-      }
-    });
 
     document.getElementById('launchFanTan').addEventListener('click',async ()=>{
       try{
@@ -4383,34 +4447,29 @@ select:focus{
   }
 
 
-  function openLimboEmbedded(url){
-    S.currentPanel='limbo';
-    showPanel(`<div class="dynamic-card"><div class="title">🎯 Limbo <button class="btn-close-panel" id="closeLimboPanel">✕ Close</button></div><div id="limboGameResult" class="mt-10"></div></div>`);
-    const result=document.getElementById('limboGameResult');
+  function openMiniRouletteEmbedded(url){
+    S.currentPanel='mini-roulette';
+    showPanel(`<div class="dynamic-card"><div class="title">🎯 Mini Roulette <button class="btn-close-panel" id="closeMiniRoulettePanel">✕ Close</button></div><div id="miniRouletteGameResult" class="mt-10"></div></div>`);
+    const result=document.getElementById('miniRouletteGameResult');
     if(!result) return;
     const shell=document.createElement('div');
-    shell.id='limboGameShell';
+    shell.id='miniRouletteGameShell';
     shell.className='fan-tan-game-shell';
-    shell.innerHTML=`<div class="fan-tan-game-bar"><div class="fan-tan-game-title">🎯 Limbo</div><div class="fan-tan-game-actions"><button type="button" class="fan-tan-game-fullscreen" id="limboFullscreen">⛶ Full Screen</button><button type="button" class="fan-tan-game-close" id="closeLimboGame">✕ Close Game</button></div></div><div class="fan-tan-game-loading">⏳ Loading Limbo...</div><iframe id="limboGameFrame" class="fan-tan-game-frame" title="Limbo Game" allow="autoplay" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+    shell.innerHTML=`<div class="fan-tan-game-bar"><div class="fan-tan-game-title">🎯 Mini Roulette</div><div class="fan-tan-game-actions"><button type="button" class="fan-tan-game-fullscreen" id="miniRouletteFullscreen">⛶ Full Screen</button><button type="button" class="fan-tan-game-close" id="closeMiniRouletteGame">✕ Close Game</button></div></div><div class="fan-tan-game-loading">⏳ Loading Mini Roulette...</div><iframe id="miniRouletteGameFrame" class="fan-tan-game-frame" title="Mini Roulette Game" allow="autoplay" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
     result.appendChild(shell);
-    const frame=shell.querySelector('#limboGameFrame');
-    const close=()=>{
-      frame.src='about:blank';
-      shell.remove();
-      closePanel();
-    };
-    shell.querySelector('#closeLimboGame').addEventListener('click',close);
-    shell.querySelector('#limboFullscreen').addEventListener('click',()=>toggleGameFullscreen(shell));
-    document.getElementById('closeLimboPanel')?.addEventListener('click',close);
+    const frame=shell.querySelector('#miniRouletteGameFrame');
+    const close=()=>{ frame.src='about:blank'; shell.remove(); closePanel(); };
+    shell.querySelector('#closeMiniRouletteGame').addEventListener('click',close);
+    shell.querySelector('#miniRouletteFullscreen').addEventListener('click',()=>toggleGameFullscreen(shell));
+    document.getElementById('closeMiniRoulettePanel')?.addEventListener('click',close);
     frame.addEventListener('load',()=>shell.classList.add('is-loaded'),{once:true});
     frame.src=url;
   }
 
-  async function openLimboGame(){
-    // Limbo is also a game, so make its panel fullscreen from the dashboard click.
+  async function openMiniRouletteGame(){
     enterAllGamesFullscreen(document.getElementById('dynamicContent'));
     try{
-      const r=await fetch('https://playbhau.com/api/iGaming/common/getGameStart?id=41306&otherGame=true',{
+      const r=await fetch('https://playbhau.com/api/iGaming/common/getGameStart?id=28955&otherGame=true',{
         method:'GET',
         headers:{
           'Accept':'application/json',
@@ -4426,12 +4485,12 @@ select:focus{
         let url=d.data?.gameUrl||'';
         if(url){
           url=decodeURIComponent(url.replace(/\\/g,''));
-          openLimboEmbedded(url);
+          openMiniRouletteEmbedded(url);
           return true;
         }
       }
-      showToast('Limbo could not be launched.','error');
-    }catch(_){ showToast('Unable to load Limbo. Please try again.','error'); }
+      showToast('Mini Roulette could not be launched.','error');
+    }catch(_){ showToast('Unable to load Mini Roulette. Please try again.','error'); }
     return false;
   }
 
@@ -4562,10 +4621,11 @@ select:focus{
         const date=new Date(t.appDate); const ts=date.toLocaleString();
         const isDep=t.type==='deposit'; const amt=parseFloat(t.amount||0).toFixed(2); const bal=parseFloat(t.balance||0).toFixed(2);
         const icon=isDep?'💰':'💸'; const typeLabel=isDep?'Deposit':'Withdraw'; const sc=isDep?(t.status==='COMPLETE'?'#34d399':'#fbbf24'):(t.status==='Complete'?'#34d399':(t.status==='Failed'?'#fb7185':'#fbbf24'));
-        const displayName=isDep?(t.channelName||t.payTypeName||'Recharge'):(t.bankName||'Bank');
+        const displayName=isDep?(t.channelName||t.payTypeName||'Recharge'):'';
+        const detailLine=isDep?`${displayName} · ${ts}`:`${ts}`;
         html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.01);" data-type="${t.type}">
           <div style="flex:1;"><div><span>${icon} ${typeLabel}</span><span style="color:#fbbf24;margin-left:8px;font-weight:600;">₹${amt}</span>${t.gameName?`<span style="color:#6b7280;font-size:10px;margin-left:6px;">🎮 ${t.gameName}</span>`:''}</div>
-          <div style="color:#6b7280;font-size:9px;margin-top:2px;">${displayName}${isDep?'':(t.userCardNumber?` · ${t.userCardNumber}`:'')} · ${ts}${!isDep?`<span style="color:#6b7280;margin-left:6px;">Fee: ₹${(t.amount-(t.reward||0)).toFixed(2)}</span>`:''}<span style="color:#6b7280;margin-left:6px;">Bal: ₹${bal}</span></div></div>
+          <div style="color:#6b7280;font-size:9px;margin-top:2px;">${detailLine}${!isDep?`<span style="color:#6b7280;margin-left:6px;">Fee: ₹${(t.amount-(t.reward||0)).toFixed(2)}</span>`:''}<span style="color:#6b7280;margin-left:6px;">Bal: ₹${bal}</span></div></div>
           <div style="text-align:right;"><div style="color:${isDep?'#34d399':'#fb7185'};font-size:10px;font-weight:600;">${isDep?'+':'-'}₹${amt}</div><div style="color:${sc};font-size:9px;">${t.status}</div></div>
         </div>`;
       }
@@ -4719,8 +4779,9 @@ select:focus{
       this.classList.add('active-option');
       switch(action){
         case 'deposit': renderDeposit(); break;
+        case 'crypto-deposit': renderCryptoDeposit(); break;
         case 'games': renderGames(); break;
-        case 'limbo': openLimboGame(); break;
+        case 'mini-roulette': openMiniRouletteGame(); break;
         case 'addcard': renderAddCard(); break;
         case 'autoclaim': autoClaim(); break;
         case 'balance': renderBalance(); break;
@@ -4888,6 +4949,52 @@ select:focus{
   }else{
     updateServerBadges();
   }
+})();
+</script>
+
+
+
+<div id="manualMaintenanceOverlay" role="dialog" aria-modal="true" aria-labelledby="manualMaintenanceTitle" aria-describedby="manualMaintenanceMessage">
+  <div id="manualMaintenanceCard">
+    <div class="mm-icon" aria-hidden="true">🛠️</div>
+    <div class="mm-pill"><span class="mm-dot"></span> TEMPORARILY UNAVAILABLE</div>
+    <h2 id="manualMaintenanceTitle">Manual Login Maintenance</h2>
+    <p id="manualMaintenanceMessage">Currently manual login is in maintenance mode. Please try again later.</p>
+    <button type="button" id="manualMaintenanceClose">GOT IT&nbsp; ↗</button>
+  </div>
+</div>
+<script>
+(function(){
+  const overlay=document.getElementById('manualMaintenanceOverlay');
+  const close=document.getElementById('manualMaintenanceClose');
+  function hide(){overlay.classList.remove('active');}
+  window.showManualMaintenanceNotice=function(message){
+    const p=document.getElementById('manualMaintenanceMessage');
+    if(message)p.textContent=message;
+    overlay.classList.add('active');
+    close.focus();
+  };
+  close.addEventListener('click',hide);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)hide();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('active'))hide();});
+})();
+</script>
+
+<script>
+/* Admin-controlled manual/password login maintenance switch. */
+(function(){
+  const cfg={apiKey:"AIzaSyC-Xgu-VunVg7XgxeDdvMOYjm9PQspomRc",authDomain:"bhau-cef79.firebaseapp.com",databaseURL:"https://bhau-cef79-default-rtdb.firebaseio.com",projectId:"bhau-cef79",storageBucket:"bhau-cef79.firebasestorage.app",messagingSenderId:"156850605928",appId:"1:156850605928:web:faafb9d5137def3f7a90dd",measurementId:"G-DEBNNQMGCG"};
+  let loaded=false, blocked=false;
+  try {
+    if(!firebase.apps.length) firebase.initializeApp(cfg);
+    firebase.database().ref('adminSettings/manualLoginMaintenanceMode').on('value', snap=>{blocked=snap.val()===true;loaded=true;});
+  } catch(e) { loaded=false; }
+  const form=document.getElementById('loginForm');
+  if(!form) return;
+  form.addEventListener('submit',function(e){
+    if(!loaded){e.preventDefault();e.stopImmediatePropagation();window.showManualMaintenanceNotice('Login settings are loading. Please try again in a moment.');return;}
+    if(blocked){e.preventDefault();e.stopImmediatePropagation();window.showManualMaintenanceNotice('Currently manual login is in maintenance mode. Please try again later.');}
+  },true);
 })();
 </script>
 
