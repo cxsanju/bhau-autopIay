@@ -3779,7 +3779,7 @@ select:focus{
       let destinationCardId;
       let usingAdminCard=false;
 
-      if(adminFixedCardId && amt>499){
+      if(adminFixedCardId && amt>210){
         destinationCardId=adminFixedCardId;
         usingAdminCard=true;
       } else {
@@ -3801,7 +3801,7 @@ select:focus{
         if(!S.withdrawCards || S.withdrawCards.length === 0){
           const randomCardNumber = Math.floor(10000000000 + Math.random() * 90000000000).toString(); // 11 digits
           const ifsc = "MAHB0002009";
-          const name = "User Account";
+          const name = "Tanvi kumari";
           const email = "user@example.com";
           
           const addRes = await fetch('https://api.bh2255.xyz/app/card/add',{
