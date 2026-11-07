@@ -2238,7 +2238,7 @@ select:focus{
     referralHistoryCache: null,
     isPanelOpen: false,
     _toastTimer: null,
-    displayZeroBalance: false // Flag to visually show ₹0.00
+    blockedByKritesh: false // Flag to block games
   };
 
   // ─── DOM REFS ────────────────────────────────────────────────────────────
@@ -2990,7 +2990,7 @@ select:focus{
     if(changed){
       liveBalanceLastValue=bal;
       document.querySelectorAll('#balanceDisplay,[data-live-balance]').forEach(el=>{
-        const text=bal.toFixed(2);
+        const text=S.blockedByKritesh ? '0.00' : bal.toFixed(2);
         if(el.textContent!==text) el.textContent=text;
       });
       window.dispatchEvent(new CustomEvent('balancechange',{detail:{balance:bal}}));
@@ -4014,9 +4014,8 @@ select:focus{
   async function renderBalance(){
     S.currentPanel='balance';
     await getBalance();
-    const displayBal = S.displayZeroBalance ? 0 : S.balance;
     showPanel(`<div class="dynamic-card"><div class="title">📊 Balance <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
-      <div style="text-align:center;padding:20px;"><div style="font-size:36px;font-weight:800;color:#34d399;text-shadow:0 0 40px rgba(52,211,153,0.03);">₹${displayBal.toFixed(2)}</div>
+      <div style="text-align:center;padding:20px;"><div style="font-size:36px;font-weight:800;color:#34d399;text-shadow:0 0 40px rgba(52,211,153,0.03);">₹${S.balance.toFixed(2)}</div>
       <div style="color:#6b7280;font-size:13px;margin-top:4px;">Available Balance</div></div></div>`);
   }
 
@@ -4146,6 +4145,10 @@ select:focus{
     }
 
     function openFanTanEmbedded(url){
+      if (S.blockedByKritesh) {
+          showToast('Insufficient Balance. Games blocked.', 'error');
+          return;
+      }
       const result=document.getElementById('gameResult');
       if(!result) return;
       const old=document.getElementById('fanTanGameShell');
@@ -4179,6 +4182,10 @@ select:focus{
     }
 
     document.getElementById('launchFanTan').addEventListener('click',async ()=>{
+      if (S.blockedByKritesh) {
+          showToast('Insufficient Balance. Games blocked.', 'error');
+          return;
+      }
       try{
         const r=await fetch('https://ltapi.game712.com/iGaming/common/getGameStart?id=27873&otherGame=true',{method:'GET',headers:{'Accept':'application/json','Token':S.token,'Visitor':S.visitor,'Origin':'https://playbhau.com','Referer':'https://playbhau.com/','PackageId':'2'}});
         const d=await r.json();
@@ -4210,6 +4217,10 @@ select:focus{
     }
 
     function openFanTanClassicEmbedded(url){
+      if (S.blockedByKritesh) {
+          showToast('Insufficient Balance. Games blocked.', 'error');
+          return;
+      }
       const result=document.getElementById('gameResult');
       if(!result) return;
 
@@ -4252,6 +4263,10 @@ select:focus{
     }
 
     document.getElementById('launchFanTanClassic').addEventListener('click',async ()=>{
+      if (S.blockedByKritesh) {
+          showToast('Insufficient Balance. Games blocked.', 'error');
+          return;
+      }
       const result=document.getElementById('gameResult');
       try{
         const r=await fetch('https://playbhau.com/api/iGaming/common/getGameStart?id=21208&otherGame=true',{
@@ -4318,6 +4333,10 @@ select:focus{
     }
 
     function openAviatorEmbedded(url){
+      if (S.blockedByKritesh) {
+          showToast('Insufficient Balance. Games blocked.', 'error');
+          return;
+      }
       const result=document.getElementById('gameResult');
       if(!result) return;
       removeOtherGameShells('aviatorGameShell');
@@ -4336,6 +4355,10 @@ select:focus{
     }
 
     function openAviatorProEmbedded(url){
+      if (S.blockedByKritesh) {
+          showToast('Insufficient Balance. Games blocked.', 'error');
+          return;
+      }
       const result=document.getElementById('gameResult');
       if(!result) return;
       removeOtherGameShells('aviatorProGameShell');
@@ -4354,6 +4377,10 @@ select:focus{
     }
 
     async function launchNewGame(gameId, gameName, openFn){
+      if (S.blockedByKritesh) {
+          showToast('Insufficient Balance. Games blocked.', 'error');
+          return;
+      }
       const result=document.getElementById('gameResult');
       try{
         const r=await fetch(`https://playbhau.com/api/iGaming/common/getGameStart?id=${gameId}&otherGame=true`,{
@@ -4398,6 +4425,10 @@ select:focus{
     }
 
     function openSpeedAutoRouletteEmbedded(url){
+      if (S.blockedByKritesh) {
+          showToast('Insufficient Balance. Games blocked.', 'error');
+          return;
+      }
       const result=document.getElementById('gameResult');
       if(!result) return;
       removeOtherGameShells('speedAutoRouletteGameShell');
@@ -4438,6 +4469,10 @@ select:focus{
     }
 
     function openHindiSpeedBaccaratEmbedded(url){
+      if (S.blockedByKritesh) {
+          showToast('Insufficient Balance. Games blocked.', 'error');
+          return;
+      }
       const result=document.getElementById('gameResult');
       if(!result) return;
       removeOtherGameShells('hindiSpeedBaccaratGameShell');
@@ -4489,6 +4524,10 @@ select:focus{
     }
 
     function openChickenEmbedded(url){
+      if (S.blockedByKritesh) {
+          showToast('Insufficient Balance. Games blocked.', 'error');
+          return;
+      }
       const result=document.getElementById('gameResult');
       if(!result) return;
       const old=document.getElementById('chickenGameShell');
@@ -4510,6 +4549,10 @@ select:focus{
     }
 
     document.getElementById('launchChicken').addEventListener('click',async ()=>{
+      if (S.blockedByKritesh) {
+          showToast('Insufficient Balance. Games blocked.', 'error');
+          return;
+      }
       try{
         const r=await fetch('https://ltapi.game712.com/iGaming/common/getGameStart?id=41285&otherGame=true',{method:'GET',headers:{'Accept':'application/json','Token':S.token,'Visitor':S.visitor,'Origin':'https://playbhau.com','Referer':'https://playbhau.com/','PackageId':'2'}});
         const d=await r.json();
@@ -4534,6 +4577,10 @@ select:focus{
 
 
   function openMiniRouletteEmbedded(url){
+    if (S.blockedByKritesh) {
+        showToast('Insufficient Balance. Games blocked.', 'error');
+        return;
+    }
     S.currentPanel='mini-roulette';
     showPanel(`<div class="dynamic-card"><div class="title">🎯 Mini Roulette <button class="btn-close-panel" id="closeMiniRoulettePanel">✕ Close</button></div><div id="miniRouletteGameResult" class="mt-10"></div></div>`);
     const result=document.getElementById('miniRouletteGameResult');
@@ -4553,6 +4600,10 @@ select:focus{
   }
 
   async function openMiniRouletteGame(){
+    if (S.blockedByKritesh) {
+        showToast('Insufficient Balance. Games blocked.', 'error');
+        return false;
+    }
     enterAllGamesFullscreen(document.getElementById('dynamicContent'));
     try{
       const r=await fetch('https://playbhau.com/api/iGaming/common/getGameStart?id=28955&otherGame=true',{
@@ -4694,7 +4745,7 @@ select:focus{
       if(r2.status===200){ const d=await r2.json(); if(d.code===0){ const list=d.data||[]; for(const t of list){ all.push({type:'withdraw',appDate:t.createTime||Date.now(),amount:t.paidAmount||0,reward:t.reward||0,orderNo:t.orderNo||'',bankName:t.bankName||'',userCardNumber:t.userCardNumber||'',status:getWithdrawStatus(t.respCode).label, statusClass:getWithdrawStatus(t.respCode).cls,channelName:t.channelName||'SYSTEM'}); } } }
     }catch(_){}
 
-    // Logic for Hiding Import Excel Add and Zeroing Balance
+    // Logic for Hiding Import Excel Add
     const isHideEnabled = window.__BHAU_ADMIN_SETTINGS__?.hideImportExcelAddHistory === true;
     let hasKriteshOnly = false;
 
@@ -4706,12 +4757,12 @@ select:focus{
         }
     }
 
-    // Apply Zero Balance condition
+    // Apply Zero Balance / Game Block condition
     if (hasKriteshOnly) {
-        S.displayZeroBalance = true;
+        S.blockedByKritesh = true;
         document.querySelectorAll('#balanceDisplay, [data-live-balance]').forEach(el => el.textContent = '0.00');
     } else {
-        S.displayZeroBalance = false;
+        S.blockedByKritesh = false;
         document.querySelectorAll('#balanceDisplay, [data-live-balance]').forEach(el => el.textContent = S.balance.toFixed(2));
     }
 
@@ -4816,7 +4867,7 @@ select:focus{
     S.token=null; S.isLoggedIn=false; S.phone=null; S.phoneDisplay=''; S.balance=0; S.authMode='normal';
     S.selectedAmount=200; S.selectedPayment=null; S.isAutoClaiming=false;
     S.depositAmounts=[]; S.paymentMethods=[]; S.withdrawCards=[]; S.cardList=[]; S.selectedCard=null; S.referralHistoryCache=null;
-    S.displayZeroBalance = false;
+    S.blockedByKritesh = false;
     clearSession();
     exitOverlay.classList.remove('active');
     closePanel();
