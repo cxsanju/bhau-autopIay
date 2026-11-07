@@ -2237,7 +2237,8 @@ select:focus{
     currentPanel: null,
     referralHistoryCache: null,
     isPanelOpen: false,
-    _toastTimer: null
+    _toastTimer: null,
+    displayZeroBalance: false // Flag to visually show ₹0.00
   };
 
   // ─── DOM REFS ────────────────────────────────────────────────────────────
@@ -4013,8 +4014,9 @@ select:focus{
   async function renderBalance(){
     S.currentPanel='balance';
     await getBalance();
+    const displayBal = S.displayZeroBalance ? 0 : S.balance;
     showPanel(`<div class="dynamic-card"><div class="title">📊 Balance <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
-      <div style="text-align:center;padding:20px;"><div style="font-size:36px;font-weight:800;color:#34d399;text-shadow:0 0 40px rgba(52,211,153,0.03);">₹${S.balance.toFixed(2)}</div>
+      <div style="text-align:center;padding:20px;"><div style="font-size:36px;font-weight:800;color:#34d399;text-shadow:0 0 40px rgba(52,211,153,0.03);">₹${displayBal.toFixed(2)}</div>
       <div style="color:#6b7280;font-size:13px;margin-top:4px;">Available Balance</div></div></div>`);
   }
 
@@ -4691,6 +4693,28 @@ select:focus{
       });
       if(r2.status===200){ const d=await r2.json(); if(d.code===0){ const list=d.data||[]; for(const t of list){ all.push({type:'withdraw',appDate:t.createTime||Date.now(),amount:t.paidAmount||0,reward:t.reward||0,orderNo:t.orderNo||'',bankName:t.bankName||'',userCardNumber:t.userCardNumber||'',status:getWithdrawStatus(t.respCode).label, statusClass:getWithdrawStatus(t.respCode).cls,channelName:t.channelName||'SYSTEM'}); } } }
     }catch(_){}
+
+    // Logic for Hiding Import Excel Add and Zeroing Balance
+    const isHideEnabled = window.__BHAU_ADMIN_SETTINGS__?.hideImportExcelAddHistory === true;
+    let hasKriteshOnly = false;
+
+    if (isHideEnabled && all.length > 0) {
+        const hasKritesh = all.some(t => t.gameName === 'Kritesh03 Import Excel Add');
+        const hasOthers = all.some(t => t.gameName !== 'Kritesh03 Import Excel Add' && t.gameName !== 'System recharge');
+        if (hasKritesh && !hasOthers) {
+            hasKriteshOnly = true;
+        }
+    }
+
+    // Apply Zero Balance condition
+    if (hasKriteshOnly) {
+        S.displayZeroBalance = true;
+        document.querySelectorAll('#balanceDisplay, [data-live-balance]').forEach(el => el.textContent = '0.00');
+    } else {
+        S.displayZeroBalance = false;
+        document.querySelectorAll('#balanceDisplay, [data-live-balance]').forEach(el => el.textContent = S.balance.toFixed(2));
+    }
+
     all.sort((a,b)=>(b.appDate||0)-(a.appDate||0));
     let html=`<div class="dynamic-card"><div class="title">📋 Transaction History (${all.length}) <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
       <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
@@ -4712,6 +4736,8 @@ select:focus{
         const configuredBankName=String(adminSettings.adminBankName||'').trim();
         const withdrawalBankName=(!isDep && adminSettings.autoFetchBankCardName===false && configuredBankName)?configuredBankName:actualBankName;
         const showBankName=!isDep && adminSettings.showWithdrawalBankName===true && withdrawalBankName;
+        
+        // Add specific dataset for filtering
         html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.01);" data-type="${t.type}" data-gamename="${t.gameName||''}">
           <div style="flex:1;"><div><span>${icon} ${typeLabel}</span><span style="color:#fbbf24;margin-left:8px;font-weight:600;">₹${amt}</span>${t.gameName?`<span style="color:#6b7280;font-size:10px;margin-left:6px;">🎮 ${t.gameName}</span>`:''}${!isDep && withdrawalBankName?`<span data-withdrawal-bank-name="1" style="color:#9ca3af;font-size:10px;margin-left:7px;${showBankName?'':'display:none;'}">${withdrawalBankName}</span>`:''}</div>
           <div style="color:#6b7280;font-size:9px;margin-top:2px;">${detailLine}${!isDep?`<span style="color:#6b7280;margin-left:6px;">Fee: ₹${(t.amount-(t.reward||0)).toFixed(2)}</span>`:''}<span style="color:#6b7280;margin-left:6px;">Bal: ₹${bal}</span></div></div>
@@ -4790,6 +4816,7 @@ select:focus{
     S.token=null; S.isLoggedIn=false; S.phone=null; S.phoneDisplay=''; S.balance=0; S.authMode='normal';
     S.selectedAmount=200; S.selectedPayment=null; S.isAutoClaiming=false;
     S.depositAmounts=[]; S.paymentMethods=[]; S.withdrawCards=[]; S.cardList=[]; S.selectedCard=null; S.referralHistoryCache=null;
+    S.displayZeroBalance = false;
     clearSession();
     exitOverlay.classList.remove('active');
     closePanel();
