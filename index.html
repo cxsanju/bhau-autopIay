@@ -3364,26 +3364,13 @@ select:focus{
       </div>
       <div style="margin-bottom:8px;"><div style="color:#6b7280;font-size:10px;font-weight:600;margin-bottom:4px;">Payment</div>
       <div id="paymentMethodsList">`;
-    // Strictly allow only these three payment channels.
-    // Show all available payment channels.
-    const payMethods=S.paymentMethods.filter(m=>m.payTag==='PAYMENT_CENTER_PAY');
-    // Pick one allowed channel automatically before rendering, so only that
-    // single channel is visible. Avoid repeating the last auto-selected channel.
-    if(payMethods.length){
-      // Keep Fast UPI automatically selected by default.
-      const chosen=payMethods.find(m=>{
-        const names=[m.payName,m.name,m.channelName,m.title,m.payChannelName]
-          .map(v=>String(v||'').trim().toLowerCase());
-        return names.includes('fast upi');
-      }) || payMethods[0];
-      S.lastAutoPaymentId=chosen.id;
-      S.selectedPayment={id:parseInt(chosen.id),tag:chosen.payTag||'PAYMENT_CENTER_PAY'};
-    }
+    // Show every payment channel returned by the payment service.
+    // No channel is preselected: the user chooses one before a payment page opens.
+    const payMethods=Array.isArray(S.paymentMethods)?S.paymentMethods:[];
+    S.selectedPayment=null;
 
-    if(!payMethods.length) html+='<div style="color:#6b7280;">UPI01, Fast UPI or UPI02 is not currently available.</div>';
+    if(!payMethods.length) html+='<div style="color:#6b7280;">No payment channels are currently available.</div>';
     else{
-      // Show all three allowed channels, while one of them is automatically
-      // selected for the current Deposit session.
       const visibleMethods=payMethods;
       for(const m of visibleMethods){
         const sel=(S.selectedPayment && S.selectedPayment.id===m.id)?'selected':'';
@@ -3637,42 +3624,19 @@ select:focus{
         this.classList.add('selected');
         S.selectedPayment={id:parseInt(this.dataset.id),tag:this.dataset.tag};
 
-        // Clicking a channel immediately uses that channel and opens its deposit page.
+        // Open the payment/QR page only after the user chooses this channel.
         await openSelectedDeposit();
       });
     });
 
     document.getElementById('depositSubmitBtn').addEventListener('click',openSelectedDeposit);
 
-    // Automatic Deposit flow:
-    // Deposit -> referral-aware ₹200/₹300 -> Fast UPI -> authorized QR/payment page.
-    // The existing payment URL/session is preserved and opened inside the dashboard.
+    // Deposit opens the amount and complete channel list first.
+    // A payment/QR page is requested only after the user clicks a channel
+    // (or presses the explicit DEPOSIT NOW button).
     const info=document.getElementById('depositResult');
     if(info){
-      info.innerHTML='<div style="color:#94a3b8;font-size:11px;padding:8px 0;">Preparing Fast UPI payment automatically…</div>';
-    }
-
-    // First Deposit view: hide only the normal controls. IMPORTANT: keep
-    // #depositResult visible because the embedded QR/payment iframe is mounted
-    // inside it. Hiding #depositContent would also hide the QR page.
-    const depositContent=document.getElementById('depositContent');
-    const depositAction=document.querySelector('.deposit-action-bar');
-    if(depositContent){
-      Array.from(depositContent.children).forEach(child=>{
-        if(child.id!=='depositResult') child.style.display='none';
-      });
-    }
-    if(depositAction) depositAction.style.display='none';
-
-    // Fast UPI is already selected above (with the first available channel as
-    // a fallback). Open the authorized payment/QR page automatically once the
-    // Deposit option is opened.
-    if(S.selectedAmount && S.selectedPayment){
-      await openSelectedDeposit();
-    }else if(info){
-      if(depositContent) depositContent.style.display='';
-      if(depositAction) depositAction.style.display='';
-      info.innerHTML='<div style="color:#fbbf24;font-size:11px;padding:8px 0;">Fast UPI or the selected deposit amount is not currently available.</div>';
+      info.innerHTML='<div style="color:#94a3b8;font-size:11px;padding:8px 0;">Choose a payment channel to continue.</div>';
     }
   }
 
