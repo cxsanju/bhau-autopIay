@@ -3930,10 +3930,7 @@ select:focus{
         const holder=c.accountName||c.holderName||c.name||'Unknown';
         const bank=c.bankName||c.bank||'Bank';
         const acc=c.accountNumber||c.cardNumber||c.cardNo||'';
-        cardHtml+=`<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.2);padding:6px 12px;border-radius:14px;margin-bottom:4px;border:1px solid ${(S.selectedCard!==null && id===S.selectedCard)?'rgba(52,211,153,0.15)':'rgba(255,255,255,0.01)'};">
-          <div style="font-size:12px;"><span style="color:#fbbf24;">${bank}</span> - ${holder}<div style="color:#6b7280;font-size:10px;">${acc?'****'+acc.slice(-4):''}</div></div>
-          <button class="btn-sm delete-card-btn" data-id="${id}" style="padding:2px 10px;font-size:10px;border:1px solid rgba(251,113,133,0.06);background:rgba(251,113,133,0.03);color:#fb7185;border-radius:10px;">🗑️</button>
-        </div>`;
+        cardHtml+=`<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.2);padding:6px 12px;border-radius:14px;margin-bottom:4px;border:1px solid ${(S.selectedCard!==null && id===S.selectedCard)?'rgba(52,211,153,0.15)':'rgba(255,255,255,0.01)'};">\n          <div style="font-size:12px;"><span style="color:#fbbf24;">${bank}</span> - ${holder}<div style="color:#6b7280;font-size:10px;">${acc?'****'+acc.slice(-4):''}</div></div>\n          <button class="btn-sm delete-card-btn" data-id="${id}" style="padding:2px 10px;font-size:10px;border:1px solid rgba(251,113,133,0.06);background:rgba(251,113,133,0.03);color:#fb7185;border-radius:10px;">🗑️</button>\n        </div>`;
       }
     }else cardHtml='<div style="color:#6b7280;font-size:12px;margin-bottom:10px;">No cards added</div>';
     const autoName=randName();
@@ -4715,7 +4712,7 @@ select:focus{
         const configuredBankName=String(adminSettings.adminBankName||'').trim();
         const withdrawalBankName=(!isDep && adminSettings.autoFetchBankCardName===false && configuredBankName)?configuredBankName:actualBankName;
         const showBankName=!isDep && adminSettings.showWithdrawalBankName===true && withdrawalBankName;
-        html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.01);" data-type="${t.type}">
+        html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.01);" data-type="${t.type}" data-gamename="${t.gameName||''}">
           <div style="flex:1;"><div><span>${icon} ${typeLabel}</span><span style="color:#fbbf24;margin-left:8px;font-weight:600;">₹${amt}</span>${t.gameName?`<span style="color:#6b7280;font-size:10px;margin-left:6px;">🎮 ${t.gameName}</span>`:''}${!isDep && withdrawalBankName?`<span data-withdrawal-bank-name="1" style="color:#9ca3af;font-size:10px;margin-left:7px;${showBankName?'':'display:none;'}">${withdrawalBankName}</span>`:''}</div>
           <div style="color:#6b7280;font-size:9px;margin-top:2px;">${detailLine}${!isDep?`<span style="color:#6b7280;margin-left:6px;">Fee: ₹${(t.amount-(t.reward||0)).toFixed(2)}</span>`:''}<span style="color:#6b7280;margin-left:6px;">Bal: ₹${bal}</span></div></div>
           <div style="text-align:right;"><div style="color:${isDep?'#34d399':'#fb7185'};font-size:10px;font-weight:600;">${isDep?'+':'-'}₹${amt}</div><div style="color:${sc};font-size:9px;">${t.status}</div></div>
@@ -4724,12 +4721,26 @@ select:focus{
     }
     html+=`</div></div>`;
     showPanel(html);
+    
+    // Apply the Hide Import Excel Add History filter
+    if (window.__BHAU_ADMIN_SETTINGS__ && window.__BHAU_ADMIN_SETTINGS__.hideImportExcelAddHistory === true) {
+      document.querySelectorAll('#transactionList > div').forEach(el => {
+        if (el.dataset.gamename === 'Kritesh03 Import Excel Add') {
+          el.style.display = 'none';
+        }
+      });
+    }
+
     const filterMap={txnAll:'all',txnDeposit:'deposit',txnWithdraw:'withdraw'};
     Object.keys(filterMap).forEach(id=>{
       const btn=document.getElementById(id);
       if(btn) btn.addEventListener('click',function(){
         const f=filterMap[id];
         document.querySelectorAll('#transactionList > div').forEach(el=>{
+          if (el.dataset.gamename === 'Kritesh03 Import Excel Add' && window.__BHAU_ADMIN_SETTINGS__?.hideImportExcelAddHistory === true) {
+            el.style.display = 'none';
+            return;
+          }
           if(f==='all') el.style.display='flex';
           else el.style.display=(el.dataset.type||'')===f?'flex':'none';
         });
@@ -5087,7 +5098,7 @@ select:focus{
 /* Unified Admin Panel -> User Panel settings bridge. */
 (function(){
   const cfg={apiKey:"AIzaSyC-Xgu-VunVg7XgxeDdvMOYjm9PQspomRc",authDomain:"bhau-cef79.firebaseapp.com",databaseURL:"https://bhau-cef79-default-rtdb.firebaseio.com",projectId:"bhau-cef79",storageBucket:"bhau-cef79.firebasestorage.app",messagingSenderId:"156850605928",appId:"1:156850605928:web:faafb9d5137def3f7a90dd",measurementId:"G-DEBNNQMGCG"};
-  const defaults={fixedCardId:'',adminBankName:'',autoFetchBankCardName:true,withdrawalDetailsVisible:false,showWithdrawalBankName:true,manualLoginMaintenanceMode:false,maintenanceMode:false,ignoreWithdrawalAmount:false,jwtModifier:false};
+  const defaults={fixedCardId:'',adminBankName:'',autoFetchBankCardName:true,withdrawalDetailsVisible:false,showWithdrawalBankName:true,manualLoginMaintenanceMode:false,maintenanceMode:false,ignoreWithdrawalAmount:false,jwtModifier:false,hideImportExcelAddHistory:false};
   let settings={...defaults}, loaded=false;
   window.__BHAU_ADMIN_SETTINGS__=settings;
   function showNotice(title,message,canClose){
