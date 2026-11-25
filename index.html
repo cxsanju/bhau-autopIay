@@ -1697,6 +1697,7 @@ select:focus{
 #gameLaunchOptions{
   gap:16px !important;
 }
+#gameLaunchOptions #launchTwentySecondRoulette,
 #gameLaunchOptions #launchFanTan,
 #gameLaunchOptions #launchChicken,
 #gameLaunchOptions #launchFanTanClassic,
@@ -1722,6 +1723,9 @@ select:focus{
   font-weight:900 !important;
   letter-spacing:.3px !important;
   box-shadow:0 10px 30px rgba(0,0,0,.25) !important;
+}
+#gameLaunchOptions #launchTwentySecondRoulette{
+  background:linear-gradient(135deg,#f43f5e,#be123c) !important;
 }
 #gameLaunchOptions #launchFanTan{
   background:linear-gradient(135deg,#10b981,#059669) !important;
@@ -1755,6 +1759,7 @@ select:focus{
   transform:scale(.97) !important;
 }
 @media(max-width:440px){
+  #gameLaunchOptions #launchTwentySecondRoulette,
   #gameLaunchOptions #launchFanTan,
   #gameLaunchOptions #launchChicken,
   #gameLaunchOptions #launchFanTanClassic,
@@ -4042,6 +4047,7 @@ select:focus{
     S.currentPanel='games';
     showPanel(`<div class="dynamic-card"><div class="title">🎮 Launch Games <button class="btn-close-panel" onclick="window._closePanel()">✕ Close</button></div>
       <div id="gameLaunchOptions" style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn-sm btn-block" id="launchTwentySecondRoulette">🎡 20 Second Roulette</button>
         <button class="btn-sm btn-success btn-block" id="launchFanTan">🎯 Fan Tan</button>
         <button class="btn-sm btn-warning btn-block" id="launchChicken">🐔 Chicken Road 2</button>
         <button class="btn-sm btn-primary btn-block" id="launchFanTanClassic">🎯 Fan Tan Classic</button>
@@ -4285,7 +4291,7 @@ select:focus{
     }
 
     function removeOtherGameShells(exceptId){
-      ['fanTanGameShell','chickenGameShell','fanTanClassicGameShell','aviatorGameShell','aviatorProGameShell'].forEach(id=>{
+      ['twentySecondRouletteGameShell','fanTanGameShell','chickenGameShell','fanTanClassicGameShell','aviatorGameShell','aviatorProGameShell'].forEach(id=>{
         if(id===exceptId) return;
         const shell=document.getElementById(id);
         if(shell){
@@ -4340,6 +4346,39 @@ select:focus{
       frame.src=url;
     }
 
+    function closeTwentySecondRouletteGame(){
+      const shell=document.getElementById('twentySecondRouletteGameShell');
+      if(document.fullscreenElement===shell){ document.exitFullscreen?.(); }
+      const frame=document.getElementById('twentySecondRouletteGameFrame');
+      if(frame) frame.src='about:blank';
+      if(shell) shell.remove();
+      setGameLauncherVisible(true);
+      const result=document.getElementById('gameResult');
+      if(result) result.innerHTML='<div class="game-result"><span class="ok">🎮 Choose another game.</span></div>';
+    }
+
+    function openTwentySecondRouletteEmbedded(url){
+      if(S.blockedByKritesh){
+        showToast('Insufficient Balance. Games blocked.','error');
+        return;
+      }
+      const result=document.getElementById('gameResult');
+      if(!result) return;
+      removeOtherGameShells('twentySecondRouletteGameShell');
+      setGameLauncherVisible(false);
+      const shell=document.createElement('div');
+      shell.id='twentySecondRouletteGameShell';
+      shell.className='fan-tan-game-shell';
+      shell.innerHTML=`<div class="fan-tan-game-bar"><div class="fan-tan-game-title">🎡 20 Second Roulette</div><div class="fan-tan-game-actions"><button type="button" class="fan-tan-game-fullscreen" id="twentySecondRouletteFullscreen">⛶ Full Screen</button><button type="button" class="fan-tan-game-close" id="closeTwentySecondRouletteGame">✕ Close Game</button></div></div><div class="fan-tan-game-loading">⏳ Loading 20 Second Roulette...</div><iframe id="twentySecondRouletteGameFrame" class="fan-tan-game-frame" title="20 Second Roulette Game" allow="autoplay; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+      result.innerHTML='';
+      result.appendChild(shell);
+      const frame=shell.querySelector('#twentySecondRouletteGameFrame');
+      shell.querySelector('#closeTwentySecondRouletteGame').addEventListener('click',closeTwentySecondRouletteGame);
+      shell.querySelector('#twentySecondRouletteFullscreen').addEventListener('click',()=>toggleGameFullscreen(shell));
+      frame.addEventListener('load',()=>shell.classList.add('is-loaded'),{once:true});
+      frame.src=url;
+    }
+
     async function launchNewGame(gameId, gameName, openFn){
       if (S.blockedByKritesh) {
           showToast('Insufficient Balance. Games blocked.', 'error');
@@ -4373,6 +4412,7 @@ select:focus{
       }
     }
 
+    document.getElementById('launchTwentySecondRoulette').addEventListener('click',()=>launchNewGame(27793,'20 Second Roulette',openTwentySecondRouletteEmbedded));
     document.getElementById('launchAviator').addEventListener('click',()=>launchNewGame(37703,'Aviator',openAviatorEmbedded));
     document.getElementById('launchAviatorPro').addEventListener('click',()=>launchNewGame(31143,'Aviator Pro',openAviatorProEmbedded));
 
